@@ -7,6 +7,8 @@ enum platformAlignment = max(double.alignof, real.alignof);
 
 static assert(platformAlignment.isPowerOf2);
 
+enum maxAllocSize = size_t.max & (platformAlignment - 1);
+
 @safe pure nothrow @nogc
 size_t roundToAligned(size_t size)
 {
@@ -21,8 +23,7 @@ size_t roundToAligned(size_t size)
 
 @safe unittest
 {
-	enum biggestAlloc = size_t.max & (platformAlignment - 1);
-	size_t[] sizes = [1, 7, 8, 9, 15, 16, 17, biggestAlloc - 1, biggestAlloc];
+	size_t[] sizes = [1, 7, 8, 9, 15, 16, 17, maxAllocSize - 1, maxAllocSize];
 
 	foreach (size; sizes)
 	{
