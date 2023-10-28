@@ -2,6 +2,10 @@ module pbackus.allocator.block;
 
 struct Block
 {
+	/+
+	Invariant: either `memory is null`, or `memory` is the only reference to a
+	valid block of memory.
+	+/
 	@system void[] memory;
 
 	@system pure nothrow @nogc
