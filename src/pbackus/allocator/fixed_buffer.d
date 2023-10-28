@@ -8,7 +8,7 @@ import core.lifetime: move;
 struct FixedBuffer(size_t bufferSize)
 {
 	private @system {
-		align(platformAlignment) ubyte[bufferSize] storage;
+		align(platformAlignment) void[bufferSize] storage;
 		size_t inUse;
 	}
 
@@ -44,7 +44,7 @@ struct FixedBuffer(size_t bufferSize)
 		if (!this.owns(block))
 			assert(0, "Invalid block");
 
-		size_t blockOffset = cast(ubyte*) &block.memory[0] - &storage[0];
+		size_t blockOffset = &block.memory[0] - &storage[0];
 		if (blockOffset + block.size == inUse)
 		{
 			inUse -= block.size;
