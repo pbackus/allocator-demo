@@ -17,6 +17,12 @@ struct Block
 	{
 		return this is Block.init;
 	}
+
+	@trusted pure nothrow @nogc
+	size_t size()
+	{
+		return memory.length;
+	}
 }
 
 // Can't access a block's memory in @safe code
@@ -90,4 +96,20 @@ struct Block
 
 	assert(first.isNull);
 	assert(!second.isNull);
+}
+
+// Can check a Block's size
+@system unittest
+{
+	Block b1;
+	Block b2 = new void[](123);
+	assert(b1.size == 0);
+	assert(b2.size == 123);
+}
+
+// Block.size is @safe
+@safe unittest
+{
+	Block block;
+	size_t _ = block.size;
 }
