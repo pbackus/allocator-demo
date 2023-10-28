@@ -9,7 +9,7 @@ struct FixedBuffer(size_t bufferSize)
 {
 	private @system {
 		align(platformAlignment) ubyte[bufferSize] storage;
-		size_t used;
+		size_t inUse;
 	}
 
 	@trusted pure nothrow @nogc
@@ -19,11 +19,11 @@ struct FixedBuffer(size_t bufferSize)
 			return Block.init;
 
 		size_t roundedSize = roundToAligned(size);
-		if (roundedSize > bufferSize - used)
+		if (roundedSize > bufferSize - inUse)
 			return Block.init;
 
-		Block result = storage[used .. used + roundedSize];
-		used += roundedSize;
+		Block result = storage[inUse .. inUse + roundedSize];
+		inUse += roundedSize;
 		return move(result);
 	}
 
