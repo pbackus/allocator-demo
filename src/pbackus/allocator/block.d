@@ -12,14 +12,14 @@ struct Block
 
 	@disable this(ref inout Block) inout;
 
-	@safe
-	bool isNull()
+	@safe pure nothrow @nogc
+	bool isNull() const
 	{
 		return this is Block.init;
 	}
 
 	@trusted pure nothrow @nogc
-	size_t size()
+	size_t size() const
 	{
 		return memory.length;
 	}
