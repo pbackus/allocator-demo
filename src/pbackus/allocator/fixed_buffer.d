@@ -3,8 +3,6 @@ module pbackus.allocator.fixed_buffer;
 import pbackus.allocator.alignment;
 import pbackus.allocator.block;
 
-import core.lifetime: move;
-
 struct FixedBuffer(size_t bufferSize)
 {
 	private @system {
@@ -15,6 +13,8 @@ struct FixedBuffer(size_t bufferSize)
 	@trusted pure nothrow @nogc
 	Block allocate(size_t size)
 	{
+		import core.lifetime: move;
+
 		if (size == 0 || size > maxAllocSize)
 			return Block.init;
 
