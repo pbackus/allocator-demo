@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/allocator-demo
+allocator-demo.so
+allocator-demo.dylib
+allocator-demo.dll
+allocator-demo.a
+allocator-demo.lib
+allocator-demo-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

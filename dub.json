@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Paul Backus"
+	],
+	"copyright": "Copyright © 2023, Paul Backus",
+	"description": "Demo of a @safe allocator interface",
+	"license": "BSL-1.0",
+	"name": "allocator-demo"
+}
