@@ -11,6 +11,12 @@ struct Block
 	}
 
 	@disable this(ref inout Block) inout;
+
+	@safe
+	bool isNull()
+	{
+		return this is Block.init;
+	}
 }
 
 // Can't access a block's memory in @safe code
@@ -55,4 +61,33 @@ struct Block
 		Block second = first;
 	}));
 	Block second = move(first);
+}
+
+// Can check for null
+@system unittest
+{
+	Block b1 = null;
+	Block b2 = new void[](1);
+
+	assert(b1.isNull);
+	assert(!b2.isNull);
+}
+
+// A default-initialized Block is null
+@safe unittest
+{
+	Block block;
+	assert(block.isNull);
+}
+
+// A moved-from Block is null
+@system unittest
+{
+	import core.lifetime: move;
+
+	Block first = new void[](1);
+	Block second = move(first);
+
+	assert(first.isNull);
+	assert(!second.isNull);
 }
