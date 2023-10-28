@@ -5,7 +5,10 @@ import std.math.traits: isPowerOf2;
 
 enum platformAlignment = max(double.alignof, real.alignof);
 
-static assert(platformAlignment.isPowerOf2);
+@safe unittest
+{
+	static assert(platformAlignment.isPowerOf2);
+}
 
 enum maxAllocSize = size_t.max & (platformAlignment - 1);
 
