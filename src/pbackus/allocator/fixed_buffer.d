@@ -28,8 +28,11 @@ struct FixedBuffer(size_t bufferSize)
 	}
 }
 
+// Allocates blocks of the correct size
 @safe unittest
 {
 	FixedBuffer!128 buf;
 	Block block = buf.allocate(32);
+	assert(!block.isNull);
+	assert(block.size >= 32);
 }
