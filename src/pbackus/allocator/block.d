@@ -9,6 +9,8 @@ struct Block
 	{
 		this.memory = memory;
 	}
+
+	@disable this(ref inout Block) inout;
 }
 
 // Can't access a block's memory in @safe code
@@ -41,4 +43,16 @@ struct Block
 {
 	void[] memory;
 	auto block = Block(memory);
+}
+
+// Blocks can only be moved, not copied
+@safe unittest
+{
+	import core.lifetime: move;
+
+	Block first;
+	assert(!__traits(compiles, () {
+		Block second = first;
+	}));
+	Block second = move(first);
 }
