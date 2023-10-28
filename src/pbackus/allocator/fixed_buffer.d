@@ -26,6 +26,14 @@ struct FixedBuffer(size_t bufferSize)
 		used += roundedSize;
 		return move(result);
 	}
+
+	@trusted pure nothrow @nogc
+	bool owns(ref const Block block) const
+	{
+		return !block.isNull
+			&& &block.memory[0] >= &storage[0]
+			&& &block.memory[$-1] <= &storage[$-1];
+	}
 }
 
 // Allocates blocks of the correct size
@@ -53,4 +61,17 @@ struct FixedBuffer(size_t bufferSize)
 	Block b2 = buf.allocate(1);
 	assert(!b1.isNull);
 	assert(b2.isNull);
+}
+
+// owns
+@system unittest
+{
+	FixedBuffer!128 buf;
+	Block b1 = buf.allocate(32);
+	Block b2;
+	Block b3 = new void[](1);
+
+	assert(buf.owns(b1));
+	assert(!buf.owns(b2));
+	assert(!buf.owns(b3));
 }
