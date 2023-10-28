@@ -34,6 +34,23 @@ struct FixedBuffer(size_t bufferSize)
 			&& &block.memory[0] >= &storage[0]
 			&& &block.memory[$-1] <= &storage[$-1];
 	}
+
+	@trusted pure nothrow @nogc
+	void deallocate(ref Block block)
+	{
+		if (block.isNull)
+			return;
+
+		if (!this.owns(block))
+			assert(0, "Invalid block");
+
+		size_t blockOffset = cast(ubyte*) &block.memory[0] - &storage[0];
+		if (blockOffset + block.size == inUse)
+		{
+			inUse -= block.size;
+			block = Block.init;
+		}
+	}
 }
 
 // Allocates blocks of the correct size
@@ -74,4 +91,40 @@ struct FixedBuffer(size_t bufferSize)
 	assert(buf.owns(b1));
 	assert(!buf.owns(b2));
 	assert(!buf.owns(b3));
+}
+
+// Can deallocate an allocated block
+@safe unittest
+{
+	FixedBuffer!128 buf;
+	Block block = buf.allocate(32);
+	buf.deallocate(block);
+	assert(block.isNull);
+}
+
+// Deallocated space can be allocated again
+@safe unittest
+{
+	FixedBuffer!128 buf;
+	Block block = buf.allocate(128);
+	buf.deallocate(block);
+	block = buf.allocate(32);
+	assert(!block.isNull);
+}
+
+// Can only deallocate the most recently allocated block
+@safe unittest
+{
+	FixedBuffer!128 buf;
+	Block b1 = buf.allocate(32);
+	Block b2 = buf.allocate(32);
+	// should fail
+	buf.deallocate(b1);
+	assert(!b1.isNull);
+	// should succeed
+	buf.deallocate(b2);
+	assert(b2.isNull);
+	// should succeed
+	buf.deallocate(b1);
+	assert(b1.isNull);
 }
