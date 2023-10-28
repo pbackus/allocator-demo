@@ -36,3 +36,21 @@ struct FixedBuffer(size_t bufferSize)
 	assert(!block.isNull);
 	assert(block.size >= 32);
 }
+
+// Can't over-allocate
+@safe unittest
+{
+	FixedBuffer!128 buf;
+	Block block = buf.allocate(256);
+	assert(block.isNull);
+}
+
+// Can't allocate when full
+@safe unittest
+{
+	FixedBuffer!128 buf;
+	Block b1 = buf.allocate(128);
+	Block b2 = buf.allocate(1);
+	assert(!b1.isNull);
+	assert(b2.isNull);
+}
