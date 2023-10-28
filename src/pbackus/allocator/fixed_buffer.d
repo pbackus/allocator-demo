@@ -15,7 +15,7 @@ struct FixedBuffer(size_t bufferSize)
 	{
 		import core.lifetime: move;
 
-		if (size == 0 || size > maxAllocSize)
+		if (size == 0 || size > maxAlignedSize)
 			return Block!FixedBuffer.init;
 
 		size_t roundedSize = roundToAligned(size);
