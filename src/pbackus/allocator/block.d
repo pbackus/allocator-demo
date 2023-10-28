@@ -1,6 +1,6 @@
 module pbackus.allocator.block;
 
-struct Block
+struct Block(Allocator)
 {
 	/+
 	Invariant: either `memory is null`, or `memory` is the only reference to a
@@ -29,11 +29,16 @@ struct Block
 	}
 }
 
+version (unittest) {
+	private struct AllocatorStub {}
+	private alias TestBlock = Block!AllocatorStub;
+}
+
 // Can't access a block's memory in @safe code
 @safe unittest
 {
 	assert(!__traits(compiles, () @safe {
-		Block block;
+		TestBlock block;
 		void[] memory = block.memory;
 	}));
 }
@@ -41,7 +46,7 @@ struct Block
 // Can access a block's memory in @system code
 @system unittest
 {
-	Block block;
+	TestBlock block;
 	void[] memory = block.memory;
 }
 
@@ -50,7 +55,7 @@ struct Block
 {
 	assert(!__traits(compiles, () @safe {
 		void[] memory;
-		auto block = Block(memory);
+		auto block = TestBlock(memory);
 	}));
 }
 
@@ -58,7 +63,7 @@ struct Block
 @system unittest
 {
 	void[] memory;
-	auto block = Block(memory);
+	auto block = TestBlock(memory);
 }
 
 // Blocks can only be moved, not copied
@@ -66,18 +71,18 @@ struct Block
 {
 	import core.lifetime: move;
 
-	Block first;
+	TestBlock first;
 	assert(!__traits(compiles, () {
-		Block second = first;
+		TestBlock second = first;
 	}));
-	Block second = move(first);
+	TestBlock second = move(first);
 }
 
 // Can check for null
 @system unittest
 {
-	Block b1 = null;
-	Block b2 = new void[](1);
+	TestBlock b1 = null;
+	TestBlock b2 = new void[](1);
 
 	assert(b1.isNull);
 	assert(!b2.isNull);
@@ -86,7 +91,7 @@ struct Block
 // A default-initialized Block is null
 @safe unittest
 {
-	Block block;
+	TestBlock block;
 	assert(block.isNull);
 }
 
@@ -95,8 +100,8 @@ struct Block
 {
 	import core.lifetime: move;
 
-	Block first = new void[](1);
-	Block second = move(first);
+	TestBlock first = new void[](1);
+	TestBlock second = move(first);
 
 	assert(first.isNull);
 	assert(!second.isNull);
@@ -105,8 +110,8 @@ struct Block
 // Can check a Block's size
 @system unittest
 {
-	Block b1;
-	Block b2 = new void[](123);
+	TestBlock b1;
+	TestBlock b2 = new void[](123);
 	assert(b1.size == 0);
 	assert(b2.size == 123);
 }
@@ -114,6 +119,6 @@ struct Block
 // Block.size is @safe
 @safe unittest
 {
-	Block block;
+	TestBlock block;
 	size_t _ = block.size;
 }

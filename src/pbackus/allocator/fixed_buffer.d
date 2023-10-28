@@ -11,24 +11,24 @@ struct FixedBuffer(size_t bufferSize)
 	}
 
 	@trusted pure nothrow @nogc
-	Block allocate(size_t size)
+	Block!FixedBuffer allocate(size_t size)
 	{
 		import core.lifetime: move;
 
 		if (size == 0 || size > maxAllocSize)
-			return Block.init;
+			return Block!FixedBuffer.init;
 
 		size_t roundedSize = roundToAligned(size);
 		if (roundedSize > bufferSize - inUse)
-			return Block.init;
+			return Block!FixedBuffer.init;
 
-		Block result = storage[inUse .. inUse + roundedSize];
+		Block!FixedBuffer result = storage[inUse .. inUse + roundedSize];
 		inUse += roundedSize;
 		return move(result);
 	}
 
 	@trusted pure nothrow @nogc
-	bool owns(ref const Block block) const
+	bool owns(ref const Block!FixedBuffer block) const
 	{
 		return !block.isNull
 			&& &block.memory[0] >= &storage[0]
@@ -36,7 +36,7 @@ struct FixedBuffer(size_t bufferSize)
 	}
 
 	@trusted pure nothrow @nogc
-	void deallocate(ref Block block)
+	void deallocate(ref Block!FixedBuffer block)
 	{
 		if (block.isNull)
 			return;
@@ -48,7 +48,7 @@ struct FixedBuffer(size_t bufferSize)
 		if (blockOffset + block.size == inUse)
 		{
 			inUse -= block.size;
-			block = Block.init;
+			block = Block!FixedBuffer.init;
 		}
 	}
 }
@@ -57,7 +57,7 @@ struct FixedBuffer(size_t bufferSize)
 @safe unittest
 {
 	FixedBuffer!128 buf;
-	Block block = buf.allocate(32);
+	auto block = buf.allocate(32);
 	assert(!block.isNull);
 	assert(block.size >= 32);
 }
@@ -66,7 +66,7 @@ struct FixedBuffer(size_t bufferSize)
 @safe unittest
 {
 	FixedBuffer!128 buf;
-	Block block = buf.allocate(256);
+	auto block = buf.allocate(256);
 	assert(block.isNull);
 }
 
@@ -74,8 +74,8 @@ struct FixedBuffer(size_t bufferSize)
 @safe unittest
 {
 	FixedBuffer!128 buf;
-	Block b1 = buf.allocate(128);
-	Block b2 = buf.allocate(1);
+	auto b1 = buf.allocate(128);
+	auto b2 = buf.allocate(1);
 	assert(!b1.isNull);
 	assert(b2.isNull);
 }
@@ -84,9 +84,9 @@ struct FixedBuffer(size_t bufferSize)
 @system unittest
 {
 	FixedBuffer!128 buf;
-	Block b1 = buf.allocate(32);
-	Block b2;
-	Block b3 = new void[](1);
+	auto b1 = buf.allocate(32);
+	Block!(typeof(buf)) b2;
+	Block!(typeof(buf)) b3 = new void[](1);
 
 	assert(buf.owns(b1));
 	assert(!buf.owns(b2));
@@ -97,7 +97,7 @@ struct FixedBuffer(size_t bufferSize)
 @safe unittest
 {
 	FixedBuffer!128 buf;
-	Block block = buf.allocate(32);
+	auto block = buf.allocate(32);
 	buf.deallocate(block);
 	assert(block.isNull);
 }
@@ -106,7 +106,7 @@ struct FixedBuffer(size_t bufferSize)
 @safe unittest
 {
 	FixedBuffer!128 buf;
-	Block block = buf.allocate(128);
+	auto block = buf.allocate(128);
 	buf.deallocate(block);
 	block = buf.allocate(32);
 	assert(!block.isNull);
@@ -116,8 +116,8 @@ struct FixedBuffer(size_t bufferSize)
 @safe unittest
 {
 	FixedBuffer!128 buf;
-	Block b1 = buf.allocate(32);
-	Block b2 = buf.allocate(32);
+	auto b1 = buf.allocate(32);
+	auto b2 = buf.allocate(32);
 	// should fail
 	buf.deallocate(b1);
 	assert(!b1.isNull);
