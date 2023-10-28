@@ -4,7 +4,7 @@ struct Block
 {
 	@system void[] memory;
 
-	@system
+	@system pure nothrow @nogc
 	this(void[] memory)
 	{
 		this.memory = memory;
