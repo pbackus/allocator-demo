@@ -17,6 +17,12 @@ struct GCAllocator
 		void* p = GC.malloc(size);
 		return p ? Block!GCAllocator(p[0 .. size]) : Block!GCAllocator.init;
 	}
+
+	@safe pure nothrow @nogc
+	bool owns(ref const Block!GCAllocator block) const shared
+	{
+		return !block.isNull;
+	}
 }
 
 // allocate
@@ -25,4 +31,15 @@ struct GCAllocator
 	auto block = GCAllocator.instance.allocate(32);
 	assert(!block.isNull);
 	assert(block.size >= 32);
+}
+
+// owns
+@safe unittest
+{
+	alias alloc = GCAllocator.instance;
+	auto b1 = alloc.allocate(32);
+	auto b2 = Block!GCAllocator.init;
+
+	assert(alloc.owns(b1));
+	assert(!alloc.owns(b2));
 }
