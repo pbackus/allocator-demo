@@ -14,3 +14,4 @@ allocator-demo-test-*
 *.o
 *.obj
 *.lst
+tags
