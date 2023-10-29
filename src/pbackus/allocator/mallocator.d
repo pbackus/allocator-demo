@@ -23,13 +23,25 @@ struct Mallocator
 	{
 		return !block.isNull;
 	}
+
+	@trusted pure nothrow @nogc
+	void deallocate(ref Block!Mallocator block) const shared
+	{
+		import core.memory: pureFree;
+
+		if (block.isNull)
+			return;
+
+		pureFree(block.memory.ptr);
+		block = Block!Mallocator.init;
+	}
 }
 
 // Allocates blocks of the correct size
 @safe unittest
 {
 	auto block = Mallocator.instance.allocate(32);
-	//scope(exit) Mallocator.instance.deallocate(block)
+	scope(exit) Mallocator.instance.deallocate(block);
 	assert(!block.isNull);
 	assert(block.size >= 32);
 }
@@ -39,9 +51,17 @@ struct Mallocator
 {
 	alias alloc = Mallocator.instance;
 	auto b1 = alloc.allocate(32);
-	//scope(exit) alloc.free(b1);
+	scope(exit) alloc.deallocate(b1);
 	Block!Mallocator b2;
 
 	assert(alloc.owns(b1));
 	assert(!alloc.owns(b2));
+}
+
+// deallocate
+@safe unittest
+{
+	auto block = Mallocator.instance.allocate(32);
+	Mallocator.instance.deallocate(block);
+	assert(block.isNull);
 }
