@@ -23,6 +23,13 @@ struct GCAllocator
 	{
 		return !block.isNull;
 	}
+
+	@safe pure nothrow @nogc
+	void deallocate(ref Block!GCAllocator block) const shared
+	{
+		// Let the GC free it automatically
+		block = Block!GCAllocator.init;
+	}
 }
 
 // allocate
@@ -42,4 +49,12 @@ struct GCAllocator
 
 	assert(alloc.owns(b1));
 	assert(!alloc.owns(b2));
+}
+
+// deallocate
+@safe unittest
+{
+	auto block = GCAllocator.instance.allocate(32);
+	GCAllocator.instance.deallocate(block);
+	assert(block.isNull);
 }
