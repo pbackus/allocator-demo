@@ -81,16 +81,20 @@ struct FixedBuffer(size_t bufferSize)
 }
 
 // owns
-@system unittest
+@safe unittest
 {
-	FixedBuffer!128 buf;
-	auto b1 = buf.allocate(32);
-	Block!(typeof(buf)) b2;
-	Block!(typeof(buf)) b3 = new void[](1);
+	FixedBuffer!128 buf1, buf2;
+	auto b1 = buf1.allocate(32);
+	auto b2 = buf2.allocate(32);
+	auto b3 = Block!(FixedBuffer!128).init;
 
-	assert(buf.owns(b1));
-	assert(!buf.owns(b2));
-	assert(!buf.owns(b3));
+	assert(buf1.owns(b1));
+	assert(!buf1.owns(b2));
+	assert(!buf1.owns(b3));
+
+	assert(!buf2.owns(b1));
+	assert(buf2.owns(b2));
+	assert(!buf2.owns(b3));
 }
 
 // Can deallocate an allocated block
