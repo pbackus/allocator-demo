@@ -6,7 +6,7 @@
 	"description": "Demo of a @safe allocator interface",
 	"license": "BSL-1.0",
 	"name": "allocator-demo",
-	"dflags": ["-preview=systemVariables"],
+	"dflags": ["-preview=systemVariables", "-preview=dip1000"],
 	"buildRequirements": ["allowWarnings"],
 	"buildTypes": {
 		"unittest": {

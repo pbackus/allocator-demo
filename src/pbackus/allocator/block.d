@@ -129,3 +129,85 @@ version (unittest) {
 	TestBlock block;
 	size_t _ = block.size;
 }
+
+template borrow(alias callback)
+{
+	auto borrow(Allocator)(ref Block!Allocator block)
+	{
+		import std.algorithm.mutation: swap;
+
+		/+
+		Using `scope` on `borrowedMemory` ensures that no additional references
+		to the block's memory can exist outside this function after the
+		callback returns.
+
+		Swapping the block's memory with a null slice for the duration of the
+		borrow ensures that no violation of the block's safety invariant can be
+		observed, even if it is accessed during the call to `callback`.
+
+		Passing an rvalue slice of borrowedMemory to the callback ensures that
+		borrowedMemory cannot be overwritten during the call to `callback`.
+
+		Therefore, the number of references to the block's memory when this
+		function returns must be the same as the number when it was called.
+
+		Therefore, this function cannot violate the block's safety invariant.
+		+/
+		scope void[] borrowedMemory = null;
+		() @trusted { swap(block.memory, borrowedMemory); }();
+		scope(exit) () @trusted { swap(block.memory, borrowedMemory); }();
+		return callback(borrowedMemory[]);
+	}
+}
+
+int[] global;
+@safe unittest
+{
+	scope int[] local;
+	static assert(!__traits(compiles, global = local));
+}
+
+@system unittest
+{
+	TestBlock block = new void[](1);
+
+	() @safe {
+		// Memory is successfully borrowed...
+		block.borrow!((void[] mem) {
+			assert(mem !is null);
+			assert(block.isNull);
+			// ...but only once...
+			block.borrow!((void[] mem2) {
+				assert(mem2 is null);
+			});
+		});
+		// ...and then returned
+		assert(!block.isNull);
+
+		// Temporary workaround for a compiler bug:
+		// https://issues.dlang.org/show_bug.cgi?id=24208
+		// Will be fixed in the next release.
+		static if (__VERSION__ >= 2106) {
+			// Can't escape into a local variable
+			void[] escapeLocal;
+			assert(!__traits(compiles,
+					block.borrow!((void[] mem) {
+						escapeLocal = mem;
+					})
+			));
+		}
+
+		// ...or into a static variable
+		static void[] escapeStatic;
+		assert(!__traits(compiles,
+			block.borrow!((void[] mem) {
+				escapeStatic = mem;
+			})
+		));
+
+		// Can't borrow by reference
+		assert(!__traits(compiles,
+			block.borrow!((ref void[] mem) {})
+		));
+	}();
+}
