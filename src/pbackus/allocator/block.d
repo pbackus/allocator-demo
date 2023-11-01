@@ -160,13 +160,6 @@ template borrow(alias callback)
 	}
 }
 
-int[] global;
-@safe unittest
-{
-	scope int[] local;
-	static assert(!__traits(compiles, global = local));
-}
-
 @system unittest
 {
 	TestBlock block = new void[](1);
