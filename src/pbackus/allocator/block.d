@@ -3,12 +3,11 @@ module pbackus.allocator.block;
 struct Block(Allocator)
 {
 	/+
-	Safety invariant: if a Block is accessible to @safe code, one of the
-	following must always be true.
+	Safety invariant: one of the following must always be true.
 
 	  1. memory is null
-	  2. memory is a unique reference to a valid memory allocation returned
-	     from Allocator.allocate
+	  2. memory is a unique reference to a live memory allocation returned from
+	     Allocator.allocate
 	
 	This safety invariant is relied upon by @trusted code in other modules,
 	including both allocators and containers.
