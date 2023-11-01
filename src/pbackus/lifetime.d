@@ -27,6 +27,13 @@ struct UninitializedBlock
 	{
 		return memory.length;
 	}
+
+	@trusted pure nothrow @nogc
+	bool isAlignedFor(T)() const
+	{
+		import core.stdc.stdint: uintptr_t;
+		return (cast(uintptr_t) memory.ptr) % T.alignof == 0;
+	}
 }
 
 // Can't access an UninitializedBlock's memory in @safe code
@@ -116,4 +123,22 @@ struct UninitializedBlock
 {
 	UninitializedBlock block;
 	size_t _ = block.size;
+}
+
+// Can check an UninitializedBlock's alignment
+@system unittest
+{
+	import core.stdc.stdlib: aligned_alloc, free;
+
+	align(64) static struct S { int n; }
+
+	void* p = aligned_alloc(S.alignof, S.sizeof);
+	scope(exit) free(p);
+
+	if (p) {
+		auto b1 = UninitializedBlock(p[0 .. S.sizeof]);
+		auto b2 = UninitializedBlock(p[1 .. S.sizeof]);
+		assert(b1.isAlignedFor!S);
+		assert(!b2.isAlignedFor!S);
+	}
 }
