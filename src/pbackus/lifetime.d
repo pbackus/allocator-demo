@@ -192,7 +192,12 @@ version (unittest) {
 	{
 		auto block = UninitializedBlock(new void[](T.sizeof));
 
-		// Use T[1] to bypass possible .init member of user-defined types
+		/+
+		Use T[1] to bypass possible .init member of user-defined types.
+
+		immutable is ok because the raw bytes of .init are the same
+		for all qualified versions of a type.
+		+/
 		static immutable initSymbol = (T[1]).init;
 		T* p = (() @safe => block.initializeAs!T)();
 
