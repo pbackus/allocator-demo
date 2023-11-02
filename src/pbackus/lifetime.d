@@ -207,7 +207,27 @@ auto initializeAs(T)(ref UninitializedBlock block)
 	// Success is guaranteed from here on
 	scope(exit) block = UninitializedBlock.init;
 
-	static if (is(T == class)) {
+	static if (is(T == U[n], U, size_t n)) {
+		static if (is(U == void))
+			alias E = ubyte;
+		else static if (is(U == class) || is(U == interface))
+			alias E = void*;
+		else
+			alias E = U;
+
+		foreach (i; 0 .. n)
+		{
+			size_t offset = i * E.sizeof;
+			auto eblock = (() @trusted => UninitializedBlock(
+				block.memory[offset .. offset + E.sizeof]
+			))();
+			auto eptr = eblock.initializeAs!E;
+			if (eptr is null)
+				return null;
+		}
+
+		return (() @trusted => cast(T*) block.memory.ptr)();
+	} else static if (is(T == class)) {
 		const(void)[] initSymbol = __traits(initSymbol, T);
 		return () @trusted {
 			block.memory[0 .. size] = initSymbol[];
@@ -401,6 +421,49 @@ version (unittest) {
 
 	static foreach (T; TestTypes)
 		checkInit!T();
+}
+
+// Static array types
+@system unittest
+{
+	static struct S { int x = 0xDEADBEEF; }
+	static class C { int x = 0xDEADBEEF; }
+	static interface I {}
+
+	int n;
+	struct Nested
+	{
+		int fun() { return n; }
+	}
+
+	import std.meta: AliasSeq;
+
+	alias TestTypes = AliasSeq!(
+		int[0], char[1], double[2], S[3], C[4], I[5], Nested[6], void[7]
+	);
+
+	static foreach (T; TestTypes)
+		checkInit!T();
+}
+
+// Vector types
+version (D_SIMD)
+@system unittest
+{
+	import core.simd;
+	import std.meta: AliasSeq;
+
+	alias BaseTypes = AliasSeq!(void[16], float[4], int[4]);
+
+	static foreach (T; BaseTypes) {{
+		 auto block = UninitializedBlock(new void[](T.sizeof));
+		 auto p = block.initializeAs!(__vector(T));
+		 assert(p !is null);
+
+		 auto actual = *cast(const(ubyte)[T.sizeof]*) p;
+		 auto expected = cast(ubyte[T.sizeof]) T.init;
+		 assert(actual == expected);
+	}}
 }
 
 // Oversized blocks
