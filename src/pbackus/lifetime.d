@@ -169,19 +169,19 @@ T* initializeAs(T)(ref UninitializedBlock block)
 	if (!block.isAlignedFor!T)
 		return null;
 
+	// Success is guaranteed from here on
+	scope(exit) block = UninitializedBlock.init;
+
 	static if (is(T == struct) || is(T == union)) {
 		static immutable initSymbol = (T[1]).init;
 		return () @trusted {
 			block.memory[] = cast(void[]) initSymbol[];
-			auto ptr = block.memory.ptr;
-			block = UninitializedBlock.init;
-			return cast(T*) ptr;
+			return cast(T*) block.memory.ptr;
 		}();
 	} else {
 		return () @trusted {
 			auto ptr = cast(Unqual!T*) block.memory.ptr;
 			*ptr = T.init;
-			block = UninitializedBlock.init;
 			return cast(T*) ptr;
 		}();
 	}
