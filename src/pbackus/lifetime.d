@@ -234,10 +234,13 @@ auto initializeAs(T)(ref UninitializedBlock block)
 			return cast(T) block.memory.ptr;
 		}();
 	} else static if (is(T == struct) || is(T == union)) {
-		static immutable workaround = (T[1]).init;
-		const(void)[] initBytes = workaround[];
 		return () @trusted {
-			block.memory[0 .. size] = initBytes[];
+			static if (__traits(isZeroInit, T)) {
+				block.memory[0 .. size] = (void[T.sizeof]).init;
+			} else {
+				const(void)[] initBytes = __traits(initSymbol, T);
+				block.memory[0 .. size] = initBytes[];
+			}
 			return cast(T*) block.memory.ptr;
 		}();
 	} else {
