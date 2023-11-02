@@ -249,7 +249,8 @@ version (unittest) {
 		auto expected = cast(const(ubyte)[T.sizeof]*) &initSymbol[0];
 		auto actual = cast(const(ubyte)[T.sizeof]*) p;
 
-		assert(*actual == *expected);
+		assert(*actual == *expected,
+			"`checkInit!(" ~ T.stringof ~ ")` failed");
 	}
 
 	private void checkInit(T)()
@@ -267,7 +268,8 @@ version (unittest) {
 		auto expected = cast(const(ubyte)[size]*) &initSymbol[0];
 		auto actual = cast(const(ubyte)[size]*) p;
 
-		assert(*actual == *expected);
+		assert(*actual == *expected,
+			"`checkInit!(" ~ T.stringof ~ ")` failed");
 	}
 }
 
