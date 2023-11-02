@@ -228,9 +228,8 @@ auto initializeAs(T)(ref UninitializedBlock block)
 
 		return (() @trusted => cast(T*) block.memory.ptr)();
 	} else static if (is(T == class)) {
-		const(void)[] initBytes = __traits(initSymbol, T);
 		return () @trusted {
-			block.memory[0 .. size] = initBytes[];
+			block.memory[0 .. size] = __traits(initSymbol, T)[];
 			return cast(T) block.memory.ptr;
 		}();
 	} else static if (is(T == struct) || is(T == union)) {
@@ -238,8 +237,7 @@ auto initializeAs(T)(ref UninitializedBlock block)
 			static if (__traits(isZeroInit, T)) {
 				block.memory[0 .. size] = (void[T.sizeof]).init;
 			} else {
-				const(void)[] initBytes = __traits(initSymbol, T);
-				block.memory[0 .. size] = initBytes[];
+				block.memory[0 .. size] = __traits(initSymbol, T)[];
 			}
 			return cast(T*) block.memory.ptr;
 		}();
