@@ -210,13 +210,13 @@ auto initializeAs(T)(ref UninitializedBlock block)
 	static if (is(T == class)) {
 		const(void)[] initSymbol = __traits(initSymbol, T);
 		return () @trusted {
-			block.memory[] = initSymbol[];
+			block.memory[0 .. size] = initSymbol[];
 			return cast(T) block.memory.ptr;
 		}();
 	} else static if (is(T == struct) || is(T == union)) {
 		static immutable initSymbol = (T[1]).init;
 		return () @trusted {
-			block.memory[] = cast(void[]) initSymbol[];
+			block.memory[0 .. size] = cast(void[]) initSymbol[];
 			return cast(T*) block.memory.ptr;
 		}();
 	} else {
@@ -394,4 +394,19 @@ version (unittest) {
 
 	static foreach (T; TestTypes)
 		checkInit!T();
+}
+
+// Oversized blocks
+@system unittest
+{
+	static struct S { int n; }
+	static class C { int n; }
+
+	auto b1 = UninitializedBlock(new void[](32));
+	auto p1 = b1.initializeAs!S;
+	assert(p1 !is null);
+
+	auto b2 = UninitializedBlock(new void[](32));
+	auto p2 = b2.initializeAs!C;
+	assert(p2 !is null);
 }
