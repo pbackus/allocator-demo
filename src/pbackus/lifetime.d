@@ -34,7 +34,13 @@ struct UninitializedBlock
 	bool isAlignedFor(T)() const
 	{
 		import core.stdc.stdint: uintptr_t;
-		return (cast(uintptr_t) memory.ptr) % T.alignof == 0;
+
+		static if (is(T == class))
+			enum alignment = __traits(classInstanceAlignment, T);
+		else
+			enum alignment = T.alignof;
+
+		return (cast(uintptr_t) memory.ptr) % alignment == 0;
 	}
 }
 
@@ -142,6 +148,27 @@ struct UninitializedBlock
 		auto b2 = UninitializedBlock(p[1 .. S.sizeof]);
 		assert(b1.isAlignedFor!S);
 		assert(!b2.isAlignedFor!S);
+	}
+}
+
+// Alignment for classes
+@system unittest
+{
+	import core.stdc.stdlib: aligned_alloc, free;
+
+	static class C { align(64) ubyte[32] n; }
+
+	enum alignment = __traits(classInstanceAlignment, C);
+	enum size = __traits(classInstanceSize, C);
+
+	void* p = aligned_alloc(alignment, size);
+	scope(exit) free(p);
+
+	if (p) {
+		auto b1 = UninitializedBlock(p[0 .. size]);
+		auto b2 = UninitializedBlock(p[C.sizeof .. size]);
+		assert(b1.isAlignedFor!C);
+		assert(!b2.isAlignedFor!C);
 	}
 }
 
