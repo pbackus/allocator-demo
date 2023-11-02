@@ -269,8 +269,7 @@ version (unittest) {
 	int n;
 	struct Nested
 	{
-		int x = 1;
-		int fun() { return n += x; }
+		int fun() { return n; }
 	}
 	static assert(__traits(isNested, Nested));
 
