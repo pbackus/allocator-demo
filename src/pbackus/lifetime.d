@@ -196,6 +196,8 @@ version (unittest) {
 		static immutable initSymbol = (T[1]).init;
 		T* p = (() @safe => block.initializeAs!T)();
 
+		assert(block.isNull);
+
 		auto expected = cast(const(ubyte)[T.sizeof]*) &initSymbol[0];
 		auto actual = cast(const(ubyte)[T.sizeof]*) p;
 
