@@ -1,5 +1,7 @@
 module pbackus.lifetime;
 
+import std.traits;
+
 struct UninitializedBlock
 {
 	/+
@@ -141,4 +143,148 @@ struct UninitializedBlock
 		assert(b1.isAlignedFor!S);
 		assert(!b2.isAlignedFor!S);
 	}
+}
+
+/++
+Initializes a block of memory as an object of type `T`
+
+The block's size and alignment must be sufficient to accomodate `T`. If they
+are not, initialization will fail.
+
+If initalization succeeds, `block` will be set to `UninitializedBlock.init`.
+This ensures that the same block of memory cannot be initialized twice.
+
+Params:
+  block = the memory to initialize
+
+Returns: a pointer to the initialized object on success, `null` on failure.
++/
+T* initializeAs(T)(ref UninitializedBlock block)
+{
+	static assert(!is(immutable T == immutable void),
+		"`void` cannot be intialized");
+
+	if (block.sizeof < T.sizeof)
+		return null;
+	if (!block.isAlignedFor!T)
+		return null;
+
+	static if (is(T == struct) || is(T == union)) {
+		static immutable initSymbol = (T[1]).init;
+		return () @trusted {
+			block.memory[] = cast(void[]) initSymbol[];
+			auto ptr = block.memory.ptr;
+			block = UninitializedBlock.init;
+			return cast(T*) ptr;
+		}();
+	} else {
+		return () @trusted {
+			auto ptr = cast(Unqual!T*) block.memory.ptr;
+			*ptr = T.init;
+			block = UninitializedBlock.init;
+			return cast(T*) ptr;
+		}();
+	}
+}
+
+version (unittest) {
+	private void checkInit(T)()
+	{
+		auto block = UninitializedBlock(new void[](T.sizeof));
+
+		// Use T[1] to bypass possible .init member of user-defined types
+		static immutable initSymbol = (T[1]).init;
+		T* p = (() @safe => block.initializeAs!T)();
+
+		auto expected = cast(const(ubyte)[T.sizeof]*) &initSymbol[0];
+		auto actual = cast(const(ubyte)[T.sizeof]*) p;
+
+		assert(*actual == *expected);
+	}
+}
+
+// Basic types
+@system unittest
+{
+	import std.meta: AliasSeq, Map = staticMap;
+
+	alias BasicTypes = AliasSeq!(
+		bool,
+		byte, short, int, long,
+		ubyte, ushort, uint, ulong,
+		float, double, real,
+		char, wchar, dchar
+	);
+
+
+	static foreach (T; BasicTypes)
+		checkInit!T();
+
+	static foreach (T; Map!(ImmutableOf, BasicTypes))
+		checkInit!T();
+}
+
+// Pointer, slice, and associative array types
+@system unittest
+{
+	import std.meta: AliasSeq, Map = staticMap;
+
+	alias TestTypes = AliasSeq!(
+		int*, int[], int[int], int function(), int delegate(), typeof(null)
+	);
+
+	static foreach (T; TestTypes)
+		checkInit!T();
+
+	static foreach (T; Map!(ImmutableOf, TestTypes))
+		checkInit!T();
+}
+
+// Struct and union types
+@system unittest
+{
+	static struct DefaultValue { int x; }
+	static struct CustomValue { int x = 0xDEADBEEF; }
+	static struct NoDefaultInit { int x; @disable this(); }
+
+	static struct InitMember
+	{
+		int x;
+		enum InitMember init = { 0xDEADBEEF };
+	}
+
+	static struct OpAssign
+	{
+		int x;
+		void opAssign(typeof(this) rhs) { x = 0xDEADBEEF; }
+	}
+
+	int n;
+	struct Nested
+	{
+		int x = 1;
+		int fun() { return n += x; }
+	}
+	static assert(__traits(isNested, Nested));
+
+	static union Union
+	{
+		double d;
+		int n;
+	}
+
+	import std.meta: AliasSeq;
+
+	alias TestTypes = AliasSeq!(
+		DefaultValue,
+		CustomValue,
+		NoDefaultInit,
+		InitMember,
+		OpAssign,
+		Nested,
+		Union
+	);
+
+	static foreach (T; TestTypes)
+		checkInit!T();
 }
