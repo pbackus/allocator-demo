@@ -208,6 +208,14 @@ auto initializeAs(T)(ref UninitializedBlock block)
 	scope(exit) block = UninitializedBlock.init;
 
 	static if (is(T == U[n], U, size_t n)) {
+		/+
+		Static arrays
+
+		void arrays are a special case in the language.
+
+		Classes and interfaces are normally reference types, but we treat them
+		as values here because static arrays are value types.
+		+/
 		static if (is(U == void))
 			alias E = ubyte;
 		else static if (is(U == class) || is(U == interface))
@@ -221,18 +229,27 @@ auto initializeAs(T)(ref UninitializedBlock block)
 			auto eblock = (() @trusted => UninitializedBlock(
 				block.memory[offset .. offset + E.sizeof]
 			))();
+			// Exclude recursive call from @trusted for correct inference
 			auto eptr = eblock.initializeAs!E;
-			if (eptr is null)
-				return null;
+			assert(eptr !is null);
 		}
 
 		return (() @trusted => cast(T*) block.memory.ptr)();
 	} else static if (is(T == class)) {
+		/+
+		Classes
+		+/
 		return () @trusted {
 			block.memory[0 .. size] = __traits(initSymbol, T)[];
 			return cast(T) block.memory.ptr;
 		}();
 	} else static if (is(T == struct) || is(T == union)) {
+		/+
+		Structs and unions
+
+		The init symbol is only generated if it's non-zero, so we have to check
+		before using it.
+		+/
 		return () @trusted {
 			static if (__traits(isZeroInit, T)) {
 				block.memory[0 .. size] = (void[T.sizeof]).init;
@@ -242,6 +259,12 @@ auto initializeAs(T)(ref UninitializedBlock block)
 			return cast(T*) block.memory.ptr;
 		}();
 	} else {
+		/+
+		Built-in types with trivial assignment
+
+		Includes basic types, pointers, slices, associative arrays, SIMD
+		vectors, typeof(null), and noreturn.
+		+/
 		return () @trusted {
 			auto ptr = cast(Unqual!T*) block.memory.ptr;
 			*ptr = T.init;
