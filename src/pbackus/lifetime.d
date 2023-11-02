@@ -184,14 +184,22 @@ This ensures that the same block of memory cannot be initialized twice.
 Params:
   block = the memory to initialize
 
-Returns: a pointer to the initialized object on success, `null` on failure.
+Returns: a pointer or class reference to the initialized object on success,
+`null` on failure.
 +/
-T* initializeAs(T)(ref UninitializedBlock block)
+auto initializeAs(T)(ref UninitializedBlock block)
 {
 	static assert(!is(immutable T == immutable void),
 		"`void` cannot be intialized");
+	static assert(!is(T == interface),
+		"`interface " ~ T.stringof ~ "` cannot be initialized");
 
-	if (block.sizeof < T.sizeof)
+	static if (is(T == class))
+		enum size = __traits(classInstanceSize, T);
+	else
+		enum size = T.sizeof;
+
+	if (block.size < size)
 		return null;
 	if (!block.isAlignedFor!T)
 		return null;
@@ -199,7 +207,13 @@ T* initializeAs(T)(ref UninitializedBlock block)
 	// Success is guaranteed from here on
 	scope(exit) block = UninitializedBlock.init;
 
-	static if (is(T == struct) || is(T == union)) {
+	static if (is(T == class)) {
+		const(void)[] initSymbol = __traits(initSymbol, T);
+		return () @trusted {
+			block.memory[] = initSymbol[];
+			return cast(T) block.memory.ptr;
+		}();
+	} else static if (is(T == struct) || is(T == union)) {
 		static immutable initSymbol = (T[1]).init;
 		return () @trusted {
 			block.memory[] = cast(void[]) initSymbol[];
@@ -216,6 +230,7 @@ T* initializeAs(T)(ref UninitializedBlock block)
 
 version (unittest) {
 	private void checkInit(T)()
+		if (!is(T == class))
 	{
 		auto block = UninitializedBlock(new void[](T.sizeof));
 
@@ -232,6 +247,24 @@ version (unittest) {
 
 		auto expected = cast(const(ubyte)[T.sizeof]*) &initSymbol[0];
 		auto actual = cast(const(ubyte)[T.sizeof]*) p;
+
+		assert(*actual == *expected);
+	}
+
+	private void checkInit(T)()
+		if (is(T == class))
+	{
+		enum size = __traits(classInstanceSize, T);
+
+		auto block = UninitializedBlock(new void[](size));
+
+		const(void)[] initSymbol = __traits(initSymbol, T);
+		T p = (() @safe => block.initializeAs!T)();
+
+		assert(block.isNull);
+
+		auto expected = cast(const(ubyte)[size]*) &initSymbol[0];
+		auto actual = cast(const(ubyte)[size]*) p;
 
 		assert(*actual == *expected);
 	}
@@ -316,6 +349,47 @@ version (unittest) {
 		OpAssign,
 		Nested,
 		Union
+	);
+
+	static foreach (T; TestTypes)
+		checkInit!T();
+}
+
+// Class types
+@system unittest
+{
+	static class DefaultValue { int x; }
+	static class CustomValue { int x = 0xDEADBEEF; }
+	static class NoDefaultInit { int x; @disable this(); }
+
+	static class InitMember
+	{
+		int x;
+		this(int x) immutable { this.x = x; }
+		static immutable init = new immutable(InitMember)(0xDEADBEEF);
+	}
+
+	int n;
+	class Nested
+	{
+		int fun() { return n; }
+	}
+	static assert(__traits(isNested, Nested));
+
+	class Big
+	{
+		int[100] a;
+	}
+
+	import std.meta: AliasSeq;
+
+	alias TestTypes = AliasSeq!(
+		DefaultValue,
+		CustomValue,
+		NoDefaultInit,
+		InitMember,
+		Nested,
+		Big
 	);
 
 	static foreach (T; TestTypes)
