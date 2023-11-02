@@ -242,7 +242,9 @@ version (unittest) {
 		for all qualified versions of a type.
 		+/
 		static immutable initSymbol = (T[1]).init;
-		T* p = (() @safe => block.initializeAs!T)();
+		T* p = () @safe pure nothrow @nogc {
+			return block.initializeAs!T;
+		}();
 
 		assert(block.isNull);
 
@@ -261,7 +263,9 @@ version (unittest) {
 		auto block = UninitializedBlock(new void[](size));
 
 		const(void)[] initSymbol = __traits(initSymbol, T);
-		T p = (() @safe => block.initializeAs!T)();
+		T p = () @safe pure nothrow @nogc {
+			return block.initializeAs!T;
+		}();
 
 		assert(block.isNull);
 
