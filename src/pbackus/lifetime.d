@@ -228,16 +228,16 @@ auto initializeAs(T)(ref UninitializedBlock block)
 
 		return (() @trusted => cast(T*) block.memory.ptr)();
 	} else static if (is(T == class)) {
-		const(void)[] initSymbol = __traits(initSymbol, T);
+		const(void)[] initBytes = __traits(initSymbol, T);
 		return () @trusted {
-			block.memory[0 .. size] = initSymbol[];
+			block.memory[0 .. size] = initBytes[];
 			return cast(T) block.memory.ptr;
 		}();
 	} else static if (is(T == struct) || is(T == union)) {
 		static immutable workaround = (T[1]).init;
-		const(void)[] initSymbol = workaround[];
+		const(void)[] initBytes = workaround[];
 		return () @trusted {
-			block.memory[0 .. size] = initSymbol[];
+			block.memory[0 .. size] = initBytes[];
 			return cast(T*) block.memory.ptr;
 		}();
 	} else {
@@ -261,14 +261,14 @@ version (unittest) {
 		immutable is ok because the raw bytes of .init are the same
 		for all qualified versions of a type.
 		+/
-		static immutable initSymbol = (T[1]).init;
+		static immutable initBytes = (T[1]).init;
 		T* p = () @safe pure nothrow @nogc {
 			return block.initializeAs!T;
 		}();
 
 		assert(block.isNull);
 
-		auto expected = cast(const(ubyte)[T.sizeof]*) &initSymbol[0];
+		auto expected = cast(const(ubyte)[T.sizeof]*) &initBytes[0];
 		auto actual = cast(const(ubyte)[T.sizeof]*) p;
 
 		assert(*actual == *expected,
@@ -282,14 +282,14 @@ version (unittest) {
 
 		auto block = UninitializedBlock(new void[](size));
 
-		const(void)[] initSymbol = __traits(initSymbol, T);
+		const(void)[] initBytes = __traits(initSymbol, T);
 		T p = () @safe pure nothrow @nogc {
 			return block.initializeAs!T;
 		}();
 
 		assert(block.isNull);
 
-		auto expected = cast(const(ubyte)[size]*) &initSymbol[0];
+		auto expected = cast(const(ubyte)[size]*) &initBytes[0];
 		auto actual = cast(const(ubyte)[size]*) p;
 
 		assert(*actual == *expected,
