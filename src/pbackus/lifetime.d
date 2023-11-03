@@ -215,39 +215,35 @@ auto initializeAs(T)(ref UninitializedBlock block)
 			block.memory[0 .. size] = __traits(initSymbol, T)[];
 			return cast(T) block.memory.ptr;
 		}();
+	} else static if (__traits(isZeroInit, T)) {
+		/+
+		Zero-initialized value types
+
+		Handling these all at once here is simpler and more efficient than
+		doing it individually in each branch.
+		+/
+		return () @trusted {
+			block.memory[0 .. size] = (void[size]).init;
+			return cast(T*) block.memory.ptr;
+		}();
 	} else static if (is(T == struct) || is(T == union)) {
 		/+
 		Structs and unions
-
-		The init symbol is only generated if it's non-zero, so we have to check
-		before using it.
 		+/
 		return () @trusted {
-			static if (__traits(isZeroInit, T)) {
-				block.memory[0 .. size] = (void[T.sizeof]).init;
-			} else {
-				block.memory[0 .. size] = __traits(initSymbol, T)[];
-			}
+			// isZeroInit case is handled earlier, so initSymbol won't be null
+			block.memory[0 .. size] = __traits(initSymbol, T)[];
 			return cast(T*) block.memory.ptr;
 		}();
-	} else static if (is(T == U[n], U, size_t n)) {
+	} else static if (is(T == E[n], E, size_t n)) {
 		/+
 		Static arrays
 
-		void arrays are a special case in the language.
-
-		Classes and interfaces are normally reference types, but we treat them
-		as values here because static arrays are value types.
+		Arrays of void and arrays of class/interface references, which would
+		not be handled correctly by recursion, are already handled by the
+		isZeroInitCase.
 		+/
-		static if (is(U == void))
-			alias E = ubyte;
-		else static if (is(U == class) || is(U == interface))
-			alias E = void*;
-		else
-			alias E = U;
-
-		foreach (i; 0 .. n)
-		{
+		foreach (i; 0 .. n) {
 			size_t offset = i * E.sizeof;
 			auto eblock = (() @trusted => UninitializedBlock(
 				block.memory[offset .. offset + E.sizeof]
