@@ -207,7 +207,30 @@ auto initializeAs(T)(ref UninitializedBlock block)
 	// Success is guaranteed from here on
 	scope(exit) block = UninitializedBlock.init;
 
-	static if (is(T == U[n], U, size_t n)) {
+	static if (is(T == class)) {
+		/+
+		Classes
+		+/
+		return () @trusted {
+			block.memory[0 .. size] = __traits(initSymbol, T)[];
+			return cast(T) block.memory.ptr;
+		}();
+	} else static if (is(T == struct) || is(T == union)) {
+		/+
+		Structs and unions
+
+		The init symbol is only generated if it's non-zero, so we have to check
+		before using it.
+		+/
+		return () @trusted {
+			static if (__traits(isZeroInit, T)) {
+				block.memory[0 .. size] = (void[T.sizeof]).init;
+			} else {
+				block.memory[0 .. size] = __traits(initSymbol, T)[];
+			}
+			return cast(T*) block.memory.ptr;
+		}();
+	} else static if (is(T == U[n], U, size_t n)) {
 		/+
 		Static arrays
 
@@ -235,29 +258,6 @@ auto initializeAs(T)(ref UninitializedBlock block)
 		}
 
 		return (() @trusted => cast(T*) block.memory.ptr)();
-	} else static if (is(T == class)) {
-		/+
-		Classes
-		+/
-		return () @trusted {
-			block.memory[0 .. size] = __traits(initSymbol, T)[];
-			return cast(T) block.memory.ptr;
-		}();
-	} else static if (is(T == struct) || is(T == union)) {
-		/+
-		Structs and unions
-
-		The init symbol is only generated if it's non-zero, so we have to check
-		before using it.
-		+/
-		return () @trusted {
-			static if (__traits(isZeroInit, T)) {
-				block.memory[0 .. size] = (void[T.sizeof]).init;
-			} else {
-				block.memory[0 .. size] = __traits(initSymbol, T)[];
-			}
-			return cast(T*) block.memory.ptr;
-		}();
 	} else {
 		/+
 		Types with trivial assignment
