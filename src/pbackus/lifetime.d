@@ -210,6 +210,9 @@ auto initializeAs(T)(ref UninitializedBlock block)
 	static if (is(T == class)) {
 		/+
 		Classes
+
+		Since classes are reference types, initialize the instance that T
+		points to rather than T itself.
 		+/
 		return () @trusted {
 			block.memory[0 .. size] = __traits(initSymbol, T)[];
@@ -229,6 +232,9 @@ auto initializeAs(T)(ref UninitializedBlock block)
 	} else static if (is(T == struct) || is(T == union)) {
 		/+
 		Structs and unions
+
+		Might have overloaded assignment, so initalize with an untyped byte
+		copy instead of assigning T.init.
 		+/
 		return () @trusted {
 			// isZeroInit case is handled earlier, so initSymbol won't be null
@@ -238,6 +244,9 @@ auto initializeAs(T)(ref UninitializedBlock block)
 	} else static if (is(T == E[n], E, size_t n)) {
 		/+
 		Static arrays
+
+		No initSymbol and might have non-trivial assignment, so initialize each
+		element individually with a recursive call.
 
 		Arrays of void and arrays of class/interface references, which would
 		not be handled correctly by recursion, are already handled by the
@@ -260,6 +269,9 @@ auto initializeAs(T)(ref UninitializedBlock block)
 
 		Includes basic types, pointers, slices, associative arrays, SIMD
 		vectors, typeof(null), noreturn, and enums (regardless of base type).
+
+		Because trivial assignment is equivalent to blitting, we can blit
+		T.init using the normal assignment operator.
 		+/
 		return () @trusted {
 			auto ptr = cast(Unqual!T*) block.memory.ptr;
