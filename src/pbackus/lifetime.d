@@ -283,51 +283,31 @@ auto initializeAs(T)(ref UninitializedBlock block)
 
 version (unittest) {
 	private void checkInit(T)()
-		if (!is(T == class))
 	{
-		auto block = UninitializedBlock(new void[](T.sizeof));
-
-		/+
-		Use T[1] to bypass possible .init member of user-defined types.
-
-		immutable is ok because the raw bytes of .init are the same
-		for all qualified versions of a type.
-		+/
-		static immutable initBytes = (T[1]).init;
-		T* p = () @safe pure nothrow @nogc {
-			return block.initializeAs!T;
-		}();
-
-		assert(block.isNull);
-
-		auto expected = cast(const(ubyte)[T.sizeof]*) &initBytes[0];
-		auto actual = cast(const(ubyte)[T.sizeof]*) p;
-
-		assert(*actual == *expected,
-			"`checkInit!(" ~ T.stringof ~ ")` failed");
-	}
-
-	private void checkInit(T)()
-		if (is(T == class))
-	{
-		enum size = __traits(classInstanceSize, T);
+		static if (is(T == class))
+			enum size = __traits(classInstanceSize, T);
+		else
+			enum size = T.sizeof;
 
 		auto block = UninitializedBlock(new void[](size));
 
-		const(void)[] initBytes = __traits(initSymbol, T);
-		T p = () @safe pure nothrow @nogc {
+		static if (is(T == class)) {
+			auto expected = cast(const(ubyte[])) __traits(initSymbol, T);
+		} else {
+			// Use T[1] to bypass possible user-defined .init
+			static immutable initSymbol = (T[1]).init;
+			auto expected = cast(const(ubyte[])) (&initSymbol)[0 .. 1];
+		}
+
+		auto p = () @safe pure nothrow @nogc {
 			return block.initializeAs!T;
 		}();
+		auto actual = (cast(const(ubyte)*) p)[0 .. size];
 
 		assert(block.isNull);
-
-		auto expected = cast(const(ubyte)[size]*) &initBytes[0];
-		auto actual = cast(const(ubyte)[size]*) p;
-
-		assert(*actual == *expected,
+		assert(actual == expected,
 			"`checkInit!(" ~ T.stringof ~ ")` failed");
 	}
-
 }
 
 // Basic types
