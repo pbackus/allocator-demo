@@ -260,10 +260,10 @@ auto initializeAs(T)(ref UninitializedBlock block)
 		}();
 	} else {
 		/+
-		Built-in types with trivial assignment
+		Types with trivial assignment
 
 		Includes basic types, pointers, slices, associative arrays, SIMD
-		vectors, typeof(null), and noreturn.
+		vectors, typeof(null), noreturn, and enums (regardless of base type).
 		+/
 		return () @trusted {
 			auto ptr = cast(Unqual!T*) block.memory.ptr;
@@ -319,6 +319,7 @@ version (unittest) {
 		assert(*actual == *expected,
 			"`checkInit!(" ~ T.stringof ~ ")` failed");
 	}
+
 }
 
 // Basic types
@@ -488,6 +489,48 @@ version (D_SIMD)
 		 auto expected = cast(ubyte[T.sizeof]) T.init;
 		 assert(actual == expected);
 	}}
+}
+
+// Enum types
+@system unittest
+{
+	static struct S { int x = 123; }
+
+	static struct OpAssign
+	{
+		int x = 123;
+		void opAssign(typeof(this)) { this.x = 456; }
+	}
+
+	static class C
+	{
+		int x = 123;
+		this(int x) { this.x = x; }
+	}
+
+	int n;
+	struct Nested
+	{
+		int x = 123;
+		int fun() { return n; }
+	}
+
+	enum IntEnum : int { a = 123 }
+	enum StringEnum : string { a = "hello" }
+	enum StructEnum : S { a = S(456) }
+	enum AssignEnum : OpAssign { a = OpAssign(789) }
+	enum ClassEnum : C { a = new C(456) }
+	enum NestedEnum : Nested { a = Nested(456) }
+	enum ArrayEnum : int[5] { a = [1, 2, 3, 4, 5] }
+
+	import std.meta: AliasSeq, Map = staticMap;
+
+	alias TestTypes = AliasSeq!(
+		IntEnum, StringEnum, StructEnum, ClassEnum, ArrayEnum
+	);
+
+	static foreach (T; TestTypes)
+		checkInit!T();
 }
 
 // Oversized blocks
