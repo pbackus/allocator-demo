@@ -183,7 +183,7 @@ Returns: a pointer or class reference to the resulting object on success,
 auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 {
 	static if (Args.length == 0) {
-		return block.initializeAs!T;
+		return block.emplaceInitializer!T;
 	} else {
 		static assert(0, "Unimplemented");
 	}
@@ -215,7 +215,7 @@ Params:
 Returns: a pointer or class reference to the initialized object on success,
 `null` on failure.
 +/
-auto initializeAs(T)(ref UninitializedBlock block)
+auto emplaceInitializer(T)(ref UninitializedBlock block)
 {
 	static assert(!is(immutable T == immutable void),
 		"`void` cannot be intialized");
@@ -286,7 +286,7 @@ auto initializeAs(T)(ref UninitializedBlock block)
 				block.memory[offset .. offset + E.sizeof]
 			))();
 			// Exclude recursive call from @trusted for correct inference
-			auto eptr = eblock.initializeAs!E;
+			auto eptr = eblock.emplaceInitializer!E;
 			assert(eptr !is null);
 		}
 
@@ -330,7 +330,7 @@ version (unittest) {
 		}
 
 		auto p = () @safe pure nothrow @nogc {
-			return block.initializeAs!T;
+			return block.emplaceInitializer!T;
 		}();
 		auto actual = (cast(const(ubyte)*) p)[0 .. size];
 
@@ -502,7 +502,7 @@ version (D_SIMD)
 
 	static foreach (T; BaseTypes) {{
 		 auto block = UninitializedBlock(new void[](T.sizeof));
-		 auto p = block.initializeAs!(__vector(T));
+		 auto p = block.emplaceInitializer!(__vector(T));
 		 assert(p !is null);
 
 		 auto actual = *cast(const(ubyte)[T.sizeof]*) p;
@@ -560,10 +560,10 @@ version (D_SIMD)
 	static class C { int n; }
 
 	auto b1 = UninitializedBlock(new void[](32));
-	auto p1 = b1.initializeAs!S;
+	auto p1 = b1.emplaceInitializer!S;
 	assert(p1 !is null);
 
 	auto b2 = UninitializedBlock(new void[](32));
-	auto p2 = b2.initializeAs!C;
+	auto p2 = b2.emplaceInitializer!C;
 	assert(p2 !is null);
 }
