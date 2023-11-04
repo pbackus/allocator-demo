@@ -171,6 +171,36 @@ struct UninitializedBlock
 }
 
 /++
+Constructs or initializes an instance of `T` in uninitialized memory
+
+Params:
+  block = the memory to use
+  args = initial value or constructor arguments
+
+Returns: a pointer or class reference to the resulting object on success,
+`null` on failure.
++/
+auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
+{
+	static if (Args.length == 0) {
+		return block.initializeAs!T;
+	} else {
+		static assert(0, "Unimplemented");
+	}
+}
+
+// No arguments -> default initialization
+@system unittest
+{
+	auto block = UninitializedBlock(new void[double.sizeof]);
+	() @safe pure nothrow @nogc {
+		double* p = block.emplace!double;
+		assert(p !is null);
+		assert(*p is double.init);
+	}();
+}
+
+/++
 Initializes a block of memory as an object of type `T`
 
 The block's size and alignment must be sufficient to accomodate `T`. If they
