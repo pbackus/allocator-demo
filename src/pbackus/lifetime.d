@@ -182,10 +182,41 @@ Returns: a pointer or class reference to the resulting object on success,
 +/
 auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 {
+	import core.lifetime: forward;
+
 	static if (Args.length == 0) {
+		/+
+		Default initialization
+		+/
 		return block.emplaceInitializer!T;
 	} else {
-		static assert(0, "Unimplemented");
+		/+
+		Non-default initialization
+		+/
+		static if (is(T == class))
+			enum size = __traits(classInstanceSize, T);
+		else
+			enum size = T.sizeof;
+
+		if (block.size < size)
+			return null;
+		if (!block.isAlignedFor!T)
+			return null;
+
+		static if (is(T == class)) {
+			/+
+			Classes
+
+			Instead of checking for a matching __ctor overload, let the call
+			fail naturally so the user gets a meaningful error message.
+			+/
+			T result = block.emplaceInitializer!T;
+			if (result)
+				result.__ctor(forward!args);
+			return result;
+		} else {
+			static assert(0, "Unimplemented");
+		}
 	}
 }
 
@@ -197,6 +228,24 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 		double* p = block.emplace!double;
 		assert(p !is null);
 		assert(*p is double.init);
+	}();
+}
+
+// Classes
+@system unittest
+{
+	class C
+	{
+		int n;
+		this(int n) @safe { this.n = n; }
+	}
+
+	enum size = __traits(classInstanceSize, C);
+	auto block = UninitializedBlock(new void[](size));
+	() @safe {
+		C c = block.emplace!C(123);
+		assert(c !is null);
+		assert(c.n == 123);
 	}();
 }
 
