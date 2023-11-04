@@ -511,7 +511,7 @@ version (D_SIMD)
 	enum NestedEnum : Nested { a = Nested(456) }
 	enum ArrayEnum : int[5] { a = [1, 2, 3, 4, 5] }
 
-	import std.meta: AliasSeq, Map = staticMap;
+	import std.meta: AliasSeq;
 
 	alias TestTypes = AliasSeq!(
 		IntEnum, StringEnum, StructEnum, ClassEnum, ArrayEnum
