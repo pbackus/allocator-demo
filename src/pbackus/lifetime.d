@@ -275,7 +275,7 @@ auto initializeAs(T)(ref UninitializedBlock block)
 		+/
 		return () @trusted {
 			auto ptr = cast(Unqual!T*) block.memory.ptr;
-			*ptr = T.init;
+			*ptr = (Unqual!T).init;
 			return cast(T*) ptr;
 		}();
 	}
