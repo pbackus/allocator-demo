@@ -1,7 +1,5 @@
 module pbackus.lifetime;
 
-import std.traits;
-
 struct UninitializedBlock
 {
 	/+
@@ -274,6 +272,8 @@ auto initializeAs(T)(ref UninitializedBlock block)
 		T.init using the normal assignment operator.
 		+/
 		return () @trusted {
+			import std.traits: Unqual;
+
 			auto ptr = cast(Unqual!T*) block.memory.ptr;
 			*ptr = (Unqual!T).init;
 			return cast(T*) ptr;
@@ -314,6 +314,7 @@ version (unittest) {
 @system unittest
 {
 	import std.meta: AliasSeq, Map = staticMap;
+	import std.traits: ImmutableOf;
 
 	alias BasicTypes = AliasSeq!(
 		bool,
@@ -335,6 +336,7 @@ version (unittest) {
 @system unittest
 {
 	import std.meta: AliasSeq, Map = staticMap;
+	import std.traits: ImmutableOf;
 
 	alias TestTypes = AliasSeq!(
 		int*, int[], int[int], int function(), int delegate(), typeof(null)
