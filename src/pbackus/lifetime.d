@@ -215,13 +215,35 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 		static if (is(T == class)) {
 			/+
 			Classes
-
-			Instead of checking for a matching __ctor overload, let the call
-			fail naturally so the user gets a meaningful error message.
 			+/
-			T result = block.emplaceInitializer!T;
-			if (result)
-				result.__ctor(forward!args);
+			import std.traits: Unqual;
+
+			static if (__traits(isNested, T)) {
+				static assert(
+					Args.length > 0 && is(typeof(args[0]) : typeof(T.outer)),
+					"Initialization of nested class `" ~ T.stringof ~ "` " ~
+					"requires instance of outer class `" ~
+					typeof(T.outer).stringof ~ "` as the first argument"
+				);
+				Unqual!T unqualResult = block.emplaceInitializer!(Unqual!T);
+				if (unqualResult)
+					unqualResult.outer = args[0];
+
+				// @trusted ok because the aliasing is never exposed to @safe code
+				T result = (() @trusted => cast(T) unqualResult)();
+				alias ctorArgs = args[1 .. $];
+			} else {
+				T result = block.emplaceInitializer!T;
+				alias ctorArgs = args;
+			}
+			static if (ctorArgs.length > 0) {
+				/+
+				Instead of checking for a matching __ctor overload, let the call
+				fail naturally so the user gets a meaningful error message.
+				+/
+				if (result)
+					result.__ctor(forward!ctorArgs);
+			}
 			return result;
 		} else static if (is(T == struct) || is(T == union)) {
 			/+
@@ -312,6 +334,47 @@ private struct Emplaced(T)
 			assert(!block.isNull);
 		}
 	}();
+}
+
+// Nested classes
+@system unittest
+{
+	static class Outer
+	{
+		int n;
+		this(int n) @safe { this.n = n; }
+		class Inner
+		{
+			int m;
+			this(int m) @safe { this.m = m; }
+			int fun() @safe { return n; }
+		}
+	}
+
+	enum size = __traits(classInstanceSize, Outer.Inner);
+	// Constructor initialization
+	{
+		auto block = UninitializedBlock(new void[](size));
+		() @safe {
+			static assert(!__traits(compiles,
+				block.emplace!(Outer.Inner)(456)
+			));
+			auto inner = block.emplace!(Outer.Inner)(new Outer(123), 456);
+			assert(inner !is null);
+			assert(inner.m == 456);
+			assert(inner.fun() == 123);
+		}();
+	}
+	// Default initialization
+	{
+		auto block = UninitializedBlock(new void[](size));
+		() @safe {
+			auto inner = block.emplace!(Outer.Inner)(new Outer(123));
+			assert(inner !is null);
+			assert(inner.m == 0);
+			assert(inner.fun() == 123);
+		}();
+	}
 }
 
 // Structs with constructors
