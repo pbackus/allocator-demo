@@ -203,6 +203,15 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 		if (!block.isAlignedFor!T)
 			return null;
 
+		version (D_Exceptions) {
+			/+
+			Leave block uninitialized if constructor throws
+			@trusted ok because the aliasing is never exposed to @safe code
+			+/
+			void[] savedMemory = (() @trusted => block.memory)();
+			scope(failure) () @trusted { block.memory = savedMemory; }();
+		}
+
 		static if (is(T == class)) {
 			/+
 			Classes
@@ -246,6 +255,29 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 		C c = block.emplace!C(123);
 		assert(c !is null);
 		assert(c.n == 123);
+	}();
+}
+
+// Classes with throwing constructors
+@system unittest
+{
+	class C
+	{
+		int n;
+		this(int n) @safe { throw new Exception("oops"); }
+	}
+
+	enum size = __traits(classInstanceSize, C);
+	auto block = UninitializedBlock(new void[](size));
+	() @safe {
+		C c;
+		try {
+			c = block.emplace!C(123);
+			assert(0, "Exception should have been thrown");
+		} catch (Exception e) {
+			assert(c is null);
+			assert(!block.isNull);
+		}
 	}();
 }
 
