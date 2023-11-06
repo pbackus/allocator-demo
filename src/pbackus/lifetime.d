@@ -224,23 +224,13 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 				result.__ctor(forward!args);
 			return result;
 		} else static if (is(T == struct) || is(T == union)) {
-			static if (__traits(hasMember, T, "__ctor")) {
-				/+
-				Structs with constructors
-				+/
-				T* result = block.emplaceInitializer!T;
-				if (result)
-					result.__ctor(forward!args);
-				return result;
-			} else {
-				/+
-				Structs without constructors
-				+/
-				Emplaced!T* result = block.emplaceInitializer!(Emplaced!T);
-				if (result)
-					result.__ctor(forward!args);
-				return &result.payload;
-			}
+			/+
+			Structs and unions
+			+/
+			Emplaced!T* result = block.emplaceInitializer!(Emplaced!T);
+			if (result)
+				result.__ctor(forward!args);
+			return &result.payload;
 		} else {
 			static assert(0, "Unimplemented");
 		}
@@ -264,7 +254,7 @@ private struct Emplaced(T)
 	{
 		import core.lifetime: forward;
 
-		if (Args.length == 1)
+		static if (Args.length == 1)
 			// Compiler won't expand the sequence automatically
 			payload = forward!(args[0]);
 		else
@@ -286,7 +276,7 @@ private struct Emplaced(T)
 // Classes
 @system unittest
 {
-	class C
+	static class C
 	{
 		int n;
 		this(int n) @safe { this.n = n; }
@@ -304,7 +294,7 @@ private struct Emplaced(T)
 // Classes with throwing constructors
 @system unittest
 {
-	class C
+	static class C
 	{
 		int n;
 		this(int n) @safe { throw new Exception("oops"); }
@@ -327,7 +317,7 @@ private struct Emplaced(T)
 // Structs with constructors
 @system unittest
 {
-	struct S
+	static struct S
 	{
 		int n;
 		string s;
@@ -350,7 +340,7 @@ private struct Emplaced(T)
 // Unions with constructors
 @system unittest
 {
-	union U
+	static union U
 	{
 		int n;
 		string s;
@@ -379,8 +369,8 @@ private struct Emplaced(T)
 // Structs/unions without constructors
 @system unittest
 {
-	struct S { int n; string s; }
-	union U { int n; string s; }
+	static struct S { int n; string s; }
+	static union U { int n; string s; }
 
 	{
 		auto block = UninitializedBlock(new void[](S.sizeof));
@@ -413,7 +403,7 @@ private struct Emplaced(T)
 // Immutable structs
 @system unittest
 {
-	struct S { int n; }
+	static struct S { int n; }
 
 	auto block = UninitializedBlock(new void[](S.sizeof));
 	() @safe {
