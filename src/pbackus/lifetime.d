@@ -223,6 +223,14 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 			if (result)
 				result.__ctor(forward!args);
 			return result;
+		} else static if (is(T == struct)) {
+			/+
+			Structs with constructors
+			+/
+			T* result = block.emplaceInitializer!T;
+			if (result)
+				result.__ctor(forward!args);
+			return result;
 		} else {
 			static assert(0, "Unimplemented");
 		}
@@ -278,6 +286,29 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 			assert(c is null);
 			assert(!block.isNull);
 		}
+	}();
+}
+
+// Structs with constructors
+@system unittest
+{
+	struct S
+	{
+		int n;
+		string s;
+		this(int n, string s) @safe
+		{
+			this.n = n;
+			this.s = s;
+		}
+	}
+
+	auto block = UninitializedBlock(new void[](S.sizeof));
+	() @safe {
+		S* s = block.emplace!S(123, "hello");
+		assert(s !is null);
+		assert(s.n == 123);
+		assert(s.s == "hello");
 	}();
 }
 
