@@ -179,6 +179,15 @@ Params:
 
 Returns: a pointer or class reference to the resulting object on success,
 `null` on failure.
+
+Bugs:
+
+Because of [a compiler bug][issue8850], it is not possible for `emplace` to
+call the constructor of a nested `struct`. To work around this limitation, call
+the constructor first and pass the resulting struct instance to `emplace` as
+the initializer.
+
+[issue8850]: https://issues.dlang.org/show_bug.cgi?id=8850
 +/
 auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 {
@@ -502,6 +511,51 @@ private struct Emplaced(T)
 		assert(s !is null);
 		assert(s.n == 123);
 	}();
+}
+
+// Nested structs
+@system unittest
+{
+	int n = 456;
+	struct Nested
+	{
+		int m;
+		this(int m) @safe { this.m = m; }
+		int fun() @safe { return n; }
+	}
+
+	// From rvalue
+	{
+		auto block = UninitializedBlock(new void[](Nested.sizeof));
+		() @safe {
+			auto nested = block.emplace!Nested(Nested(123));
+			assert(nested !is null);
+			assert(nested.m == 123);
+			assert(nested.fun() == 456);
+		}();
+	}
+	// From ctor args
+	/+
+	Disabled due to https://issues.dlang.org/show_bug.cgi?id=8850
+	Attempting to compile this test produces the following errors:
+
+	Error: cannot access frame pointer of `pbackus.lifetime.__unittest_L508_C9.Nested`
+	Error: template instance `pbackus.lifetime.Emplaced!(Nested).Emplaced.__ctor!int` error instantiating
+	instantiated from here: `emplace!(Nested, int)`
+
+	core.lifetime.emplace handles this even worse--it silently sets the context pointer to null.
+	See https://issues.dlang.org/show_bug.cgi?id=14402
+	+/
+	version (none)
+	{
+		auto block = UninitializedBlock(new void[](Nested.sizeof));
+		() @safe {
+			auto nested = block.emplace!Nested(123);
+			assert(nested !is null);
+			assert(nested.m == 123);
+			assert(nested.fun() == 456);
+		}();
+	}
 }
 
 /++
