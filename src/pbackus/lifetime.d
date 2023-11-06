@@ -224,13 +224,20 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 				result.__ctor(forward!args);
 			return result;
 		} else static if (is(T == struct) || is(T == union)) {
-			/+
-			Structs with constructors
-			+/
-			T* result = block.emplaceInitializer!T;
-			if (result)
-				result.__ctor(forward!args);
-			return result;
+			static if (__traits(hasMember, T, "__ctor")) {
+				/+
+				Structs with constructors
+				+/
+				T* result = block.emplaceInitializer!T;
+				if (result)
+					result.__ctor(forward!args);
+				return result;
+			} else {
+				T* result = block.emplaceInitializer!T;
+				if (result)
+					*result = forward!args;
+				return result;
+			}
 		} else {
 			static assert(0, "Unimplemented");
 		}
@@ -335,6 +342,40 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 		auto block = UninitializedBlock(new void[](U.sizeof));
 		() @safe {
 			U* u = block.emplace!U("hello");
+			assert(u !is null);
+			() @trusted { assert(u.s == "hello"); }();
+		}();
+	}
+}
+
+// Structs/unions without constructors
+@system unittest
+{
+	struct S { int n; string s; }
+	union U { int n; string s; }
+
+	{
+		auto block = UninitializedBlock(new void[](S.sizeof));
+		() @safe {
+			S* s = block.emplace!S(S(123, "hello"));
+			assert(s !is null);
+			assert(s.n == 123);
+			assert(s.s == "hello");
+		}();
+	}
+	{
+		auto block = UninitializedBlock(new void[](U.sizeof));
+		() @safe {
+			U* u = block.emplace!U(U(123));
+			assert(u !is null);
+			assert(u.n == 123);
+		}();
+	}
+	{
+		auto block = UninitializedBlock(new void[](U.sizeof));
+		() @safe {
+			U initializer = { s: "hello" };
+			U* u = block.emplace!U(initializer);
 			assert(u !is null);
 			() @trusted { assert(u.s == "hello"); }();
 		}();
