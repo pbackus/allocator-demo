@@ -247,16 +247,13 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 				alias ctorArgs = args;
 			}
 
-			if (result) {
+			static if (ctorArgs.length > 0 || __traits(hasMember, T, "__ctor")) {
 				/+
 				Instead of checking for a matching __ctor overload, let the call
 				fail naturally so the user gets a meaningful error message.
 				+/
-				static if (ctorArgs.length > 0) {
+				if (result)
 					result.__ctor(forward!ctorArgs);
-				} else static if (__traits(hasMember, T, "__ctor")) {
-					result.__ctor();
-				}
 			}
 			return result;
 		} else static if (is(T == struct) || is(T == union)) {
