@@ -233,14 +233,42 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 					result.__ctor(forward!args);
 				return result;
 			} else {
-				T* result = block.emplaceInitializer!T;
+				/+
+				Structs without constructors
+				+/
+				Emplaced!T* result = block.emplaceInitializer!(Emplaced!T);
 				if (result)
-					*result = forward!args;
-				return result;
+					result.__ctor(forward!args);
+				return &result.payload;
 			}
 		} else {
 			static assert(0, "Unimplemented");
 		}
+	}
+}
+
+/+
+In D, constructors have the unique ability to assign to a non-mutable member
+variable once, for the purpose of initialization. If done outside of a
+constructor, this is always undefined behavior.
+
+Emplace needs to initialize non-mutable objects, and (per above) that
+initialization can only be done in a constructor, but some types don't have a
+constructor to call. To work around this, we wrap them in a struct with a
+constructor, and use the wrapper's constructor to perform initialization.
++/
+private struct Emplaced(T)
+{
+	T payload;
+	this(Args...)(auto ref Args args)
+	{
+		import core.lifetime: forward;
+
+		if (Args.length == 1)
+			// Compiler won't expand the sequence automatically
+			payload = forward!(args[0]);
+		else
+			payload = forward!args;
 	}
 }
 
@@ -380,6 +408,19 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 			() @trusted { assert(u.s == "hello"); }();
 		}();
 	}
+}
+
+// Immutable structs
+@system unittest
+{
+	struct S { int n; }
+
+	auto block = UninitializedBlock(new void[](S.sizeof));
+	() @safe {
+		auto s = block.emplace!(immutable(S))(immutable(S)(123));
+		assert(s !is null);
+		assert(s.n == 123);
+	}();
 }
 
 /++
