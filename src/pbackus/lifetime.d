@@ -223,7 +223,7 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 			if (result)
 				result.__ctor(forward!args);
 			return result;
-		} else static if (is(T == struct)) {
+		} else static if (is(T == struct) || is(T == union)) {
 			/+
 			Structs with constructors
 			+/
@@ -310,6 +310,35 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 		assert(s.n == 123);
 		assert(s.s == "hello");
 	}();
+}
+
+// Unions with constructors
+@system unittest
+{
+	union U
+	{
+		int n;
+		string s;
+		this(int n) @safe { this.n = n; }
+		this(string s) @safe { this.s = s; }
+	}
+
+	{
+		auto block = UninitializedBlock(new void[](U.sizeof));
+		() @safe {
+			U* u = block.emplace!U(123);
+			assert(u !is null);
+			assert(u.n == 123);
+		}();
+	}
+	{
+		auto block = UninitializedBlock(new void[](U.sizeof));
+		() @safe {
+			U* u = block.emplace!U("hello");
+			assert(u !is null);
+			() @trusted { assert(u.s == "hello"); }();
+		}();
+	}
 }
 
 /++
