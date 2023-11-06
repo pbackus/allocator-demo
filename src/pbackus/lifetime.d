@@ -225,6 +225,7 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 					"requires instance of outer class `" ~
 					typeof(T.outer).stringof ~ "` as the first argument"
 				);
+
 				Unqual!T unqualResult = block.emplaceInitializer!(Unqual!T);
 				if (unqualResult)
 					unqualResult.outer = args[0];
@@ -236,13 +237,17 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 				T result = block.emplaceInitializer!T;
 				alias ctorArgs = args;
 			}
-			static if (ctorArgs.length > 0) {
+
+			if (result) {
 				/+
 				Instead of checking for a matching __ctor overload, let the call
 				fail naturally so the user gets a meaningful error message.
 				+/
-				if (result)
+				static if (ctorArgs.length > 0) {
 					result.__ctor(forward!ctorArgs);
+				} else static if (__traits(hasMember, T, "__ctor")) {
+					result.__ctor();
+				}
 			}
 			return result;
 		} else static if (is(T == struct) || is(T == union)) {
@@ -349,11 +354,22 @@ private struct Emplaced(T)
 			this(int m) @safe { this.m = m; }
 			int fun() @safe { return n; }
 		}
+		class Inner2
+		{
+			int m;
+			int fun() @safe { return n; }
+		}
+		class Inner3
+		{
+			int m;
+			this() @safe { this.m = 456; }
+			int fun() @safe { return n; }
+		}
 	}
 
-	enum size = __traits(classInstanceSize, Outer.Inner);
 	// Constructor initialization
 	{
+		enum size = __traits(classInstanceSize, Outer.Inner);
 		auto block = UninitializedBlock(new void[](size));
 		() @safe {
 			static assert(!__traits(compiles,
@@ -367,12 +383,24 @@ private struct Emplaced(T)
 	}
 	// Default initialization
 	{
+		enum size = __traits(classInstanceSize, Outer.Inner2);
 		auto block = UninitializedBlock(new void[](size));
 		() @safe {
-			auto inner = block.emplace!(Outer.Inner)(new Outer(123));
-			assert(inner !is null);
-			assert(inner.m == 0);
-			assert(inner.fun() == 123);
+			auto inner2 = block.emplace!(Outer.Inner2)(new Outer(123));
+			assert(inner2 !is null);
+			assert(inner2.m == 0);
+			assert(inner2.fun() == 123);
+		}();
+	}
+	// Default construction
+	{
+		enum size = __traits(classInstanceSize, Outer.Inner3);
+		auto block = UninitializedBlock(new void[](size));
+		() @safe {
+			auto inner3 = block.emplace!(Outer.Inner3)(new Outer(123));
+			assert(inner3 !is null);
+			assert(inner3.m == 456);
+			assert(inner3.fun() == 123);
 		}();
 	}
 }
