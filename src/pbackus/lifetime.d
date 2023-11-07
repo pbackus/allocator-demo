@@ -232,8 +232,8 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 				static assert(
 					Args.length > 0 && is(typeof(args[0]) : Outer),
 					"Initialization of nested class `" ~ T.stringof ~ "` " ~
-					"requires instance of outer class `" ~
-					typeof(T.outer).stringof ~ "` as the first argument"
+					"requires instance of outer class `" ~ Outer.stringof ~ "` " ~
+					"` as the first argument to `emplace`"
 				);
 
 				Unqual!T unqualResult = block.emplaceInitializer!(Unqual!T);
