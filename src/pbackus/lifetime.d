@@ -236,8 +236,9 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 				);
 
 				Unqual!T unqualResult = block.emplaceInitializer!(Unqual!T);
-				if (unqualResult)
-					unqualResult.outer = args[0];
+				if (unqualResult) () @trusted {
+					unqualResult.outer = cast(Unqual!(typeof(T.outer))) args[0];
+				}();
 
 				// @trusted ok because the aliasing is never exposed to @safe code
 				T result = (() @trusted => cast(T) unqualResult)();
@@ -349,11 +350,13 @@ private struct Emplaced(T)
 	{
 		int n;
 		this(int n) @safe { this.n = n; }
+		this(int n) immutable @safe { this.n = n; }
 		class Inner
 		{
 			int m;
 			this(int m) @safe { this.m = m; }
-			int fun() @safe { return n; }
+			this(int m) immutable @safe { this.m = m; }
+			int fun() const @safe { return n; }
 		}
 		class Inner2
 		{
@@ -377,6 +380,19 @@ private struct Emplaced(T)
 				block.emplace!(Outer.Inner)(456)
 			));
 			auto inner = block.emplace!(Outer.Inner)(new Outer(123), 456);
+			assert(inner !is null);
+			assert(inner.m == 456);
+			assert(inner.fun() == 123);
+		}();
+	}
+	// ... with immutable
+	{
+		enum size = __traits(classInstanceSize, Outer.Inner);
+		auto block = UninitializedBlock(new void[](size));
+		() @safe {
+			auto inner = block.emplace!(immutable(Outer.Inner))(
+				new immutable(Outer)(123), 456
+			);
 			assert(inner !is null);
 			assert(inner.m == 456);
 			assert(inner.fun() == 123);
