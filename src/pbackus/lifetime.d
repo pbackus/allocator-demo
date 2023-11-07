@@ -237,9 +237,17 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 				);
 
 				Unqual!T unqualResult = block.emplaceInitializer!(Unqual!T);
-				if (unqualResult) () @trusted {
-					unqualResult.outer = *cast(Unqual!Outer*) &args[0];
-				}();
+				if (unqualResult) {
+					// Force implicit conversion
+					Outer outerArg = forward!(args[0]);
+					/+
+					@trusted ok because Outer and Unqual!Outer have identical
+					representation, and unsafe aliasing will not be exposed
+					+/
+					() @trusted {
+						unqualResult.outer = *cast(Unqual!Outer*) &outerArg;
+					}();
+				}
 
 				// @trusted ok because the aliasing is never exposed to @safe code
 				T result = (() @trusted => cast(T) unqualResult)();
@@ -445,6 +453,46 @@ private struct Emplaced(T)
 	() @safe {
 		auto inner = block.emplace!(immutable(Outer.Inner))(
 			new immutable(Outer)(123), 456
+		);
+		assert(inner !is null);
+		assert(inner.m == 456);
+		assert(inner.fun() == 123);
+	}();
+}
+
+// Nested class + immutable + alias this
+@system unittest
+{
+	static class Outer
+	{
+		int n;
+		this(int n) immutable @safe { this.n = n; }
+		auto opCast(T)() const { return cast(T) null; }
+
+		class Inner
+		{
+			int m;
+			this(int m) immutable @safe { this.m = m; }
+			int fun() const @safe { return n; }
+		}
+	}
+
+	struct Wrapper
+	{
+		void* p;
+		Outer outer;
+		this(immutable Outer outer) immutable @safe
+		{
+			this.outer = outer;
+		}
+		alias this = outer;
+	}
+
+	enum size = __traits(classInstanceSize, Outer.Inner);
+	auto block = UninitializedBlock(new void[](size));
+	() @safe {
+		auto inner = block.emplace!(immutable(Outer.Inner))(
+			immutable(Wrapper)(new immutable(Outer)(123)), 456
 		);
 		assert(inner !is null);
 		assert(inner.m == 456);
