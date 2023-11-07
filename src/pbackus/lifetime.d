@@ -228,8 +228,9 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 			import std.traits: Unqual;
 
 			static if (__traits(isNested, T)) {
+				alias Outer = typeof(T.outer);
 				static assert(
-					Args.length > 0 && is(typeof(args[0]) : typeof(T.outer)),
+					Args.length > 0 && is(typeof(args[0]) : Outer),
 					"Initialization of nested class `" ~ T.stringof ~ "` " ~
 					"requires instance of outer class `" ~
 					typeof(T.outer).stringof ~ "` as the first argument"
@@ -237,7 +238,7 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 
 				Unqual!T unqualResult = block.emplaceInitializer!(Unqual!T);
 				if (unqualResult) () @trusted {
-					unqualResult.outer = cast(Unqual!(typeof(T.outer))) args[0];
+					unqualResult.outer = *cast(Unqual!Outer*) &args[0];
 				}();
 
 				// @trusted ok because the aliasing is never exposed to @safe code
@@ -420,6 +421,35 @@ private struct Emplaced(T)
 			assert(inner3.fun() == 123);
 		}();
 	}
+}
+
+// Nested class + immutable + opCast on outer class
+@system unittest
+{
+	static class Outer
+	{
+		int n;
+		this(int n) immutable @safe { this.n = n; }
+		auto opCast(T)() const { return cast(T) null; }
+
+		class Inner
+		{
+			int m;
+			this(int m) immutable @safe { this.m = m; }
+			int fun() const @safe { return n; }
+		}
+	}
+
+	enum size = __traits(classInstanceSize, Outer.Inner);
+	auto block = UninitializedBlock(new void[](size));
+	() @safe {
+		auto inner = block.emplace!(immutable(Outer.Inner))(
+			new immutable(Outer)(123), 456
+		);
+		assert(inner !is null);
+		assert(inner.m == 456);
+		assert(inner.fun() == 123);
+	}();
 }
 
 // Structs with constructors
