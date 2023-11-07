@@ -271,14 +271,9 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 }
 
 /+
-In D, constructors have the unique ability to assign to a non-mutable member
-variable once, for the purpose of initialization. If done outside of a
-constructor, this is always undefined behavior.
-
-Emplace needs to initialize non-mutable objects, and (per above) that
-initialization can only be done in a constructor, but some types don't have a
-constructor to call. To work around this, we wrap them in a struct with a
-constructor, and use the wrapper's constructor to perform initialization.
+In D, initialization in a constructor is the only way to assign a value to
+non-mutable memory without invoking undefined behavior. Since some types don't
+have a constructor, this wrapper struct is used to guarantee that one exists.
 +/
 private struct Emplaced(T)
 {
