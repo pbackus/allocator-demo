@@ -266,16 +266,14 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 					result.__ctor(forward!ctorArgs);
 			}
 			return result;
-		} else static if (is(T == struct) || is(T == union)) {
+		} else {
 			/+
-			Structs and unions
+			Value types
 			+/
 			Emplaced!T* result = block.emplaceInitializer!(Emplaced!T);
 			if (result)
 				result.__ctor(forward!args);
 			return &result.payload;
-		} else {
-			static assert(0, "Unimplemented");
 		}
 	}
 }
@@ -646,6 +644,35 @@ private struct Emplaced(T)
 			assert(nested.fun() == 456);
 		}();
 	}
+}
+
+// Builtins and enums
+@system unittest
+{
+	import std.meta: AliasSeq, Map = staticMap;
+
+	enum E { a = 123 }
+
+	alias TestTypes = AliasSeq!(
+		int, double, char,
+		int*, int[], int[int], int function(), typeof(null),
+		E
+	);
+
+	alias testValues = AliasSeq!(
+		123, 1.23, 'a',
+		null, [1, 2, 3], [1: 2, 3: 4], function int() => 123, null,
+		E.a
+	);
+
+	static foreach (i, T; TestTypes) {{
+		auto block = UninitializedBlock(new void[](T.sizeof));
+		() @safe {
+			auto ptr = block.emplace!T(testValues[i]);
+			assert(ptr !is null);
+			assert(*ptr == testValues[i]);
+		}();
+	}}
 }
 
 /++
