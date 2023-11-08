@@ -740,11 +740,8 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		Builtin types and enums
 
 		No initSymbol, so we have to create our own.
-
-		TODO: is there a size threshold where we should switch from a stack
-		variable to `static immutable`?
 		+/
-		auto initSymbol = T.init;
+		static immutable initSymbol = T.init;
 		return () @trusted {
 			auto initializer = cast(const(void[])) (&initSymbol)[0 .. 1];
 			block.memory[0 .. size] = initializer[];
@@ -1001,6 +998,19 @@ version (D_SIMD)
 	static struct S { immutable int n = 123; }
 	enum E : S { a = S.init }
 
+	checkInit!E();
+}
+
+// Enum with throwing destructor in base type
+@system unittest
+{
+	static struct S
+	{
+		int n = 123;
+		~this() @safe pure { throw new Exception("oops"); }
+	}
+	enum E : S { a = S.init }
+	
 	checkInit!E();
 }
 
