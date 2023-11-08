@@ -4,6 +4,8 @@ import pbackus.allocator.block;
 
 import core.memory: GC;
 
+version (D_BetterC) {} else:
+
 struct GCAllocator
 {
 	static shared GCAllocator instance;

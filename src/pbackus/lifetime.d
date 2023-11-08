@@ -89,8 +89,9 @@ struct UninitializedBlock
 // Can check for null
 @system unittest
 {
+	static void[1] buf;
 	UninitializedBlock b1 = null;
-	UninitializedBlock b2 = new void[](1);
+	UninitializedBlock b2 = buf[];
 
 	assert(b1.isNull);
 	assert(!b2.isNull);
@@ -108,7 +109,8 @@ struct UninitializedBlock
 {
 	import core.lifetime: move;
 
-	UninitializedBlock first = new void[](1);
+	static void[1] buf;
+	UninitializedBlock first = buf[];
 	UninitializedBlock second = move(first);
 
 	assert(first.isNull);
@@ -118,8 +120,9 @@ struct UninitializedBlock
 // Can check an UninitializedBlock's size
 @system unittest
 {
+	static void[123] buf;
 	UninitializedBlock b1;
-	UninitializedBlock b2 = new void[](123);
+	UninitializedBlock b2 = buf[];
 	assert(b1.size == 0);
 	assert(b2.size == 123);
 }
@@ -150,6 +153,7 @@ struct UninitializedBlock
 }
 
 // Alignment for classes
+version (D_BetterC) {} else
 @system unittest
 {
 	import core.stdc.stdlib: aligned_alloc, free;
@@ -305,7 +309,8 @@ private struct Emplaced(T)
 // No arguments -> default initialization
 @system unittest
 {
-	auto block = UninitializedBlock(new void[double.sizeof]);
+	static align(double.alignof) void[double.sizeof] buf;
+	auto block = UninitializedBlock(buf[]);
 	() @safe pure nothrow @nogc {
 		double* p = block.emplace!double;
 		assert(p !is null);
@@ -314,6 +319,7 @@ private struct Emplaced(T)
 }
 
 // Classes
+version (D_BetterC) {} else
 @system unittest
 {
 	static class C
@@ -323,7 +329,10 @@ private struct Emplaced(T)
 	}
 
 	enum size = __traits(classInstanceSize, C);
-	auto block = UninitializedBlock(new void[](size));
+	enum alignment = __traits(classInstanceAlignment, C);
+
+	static align(alignment) void[size] buf;
+	auto block = UninitializedBlock(buf[]);
 	() @safe {
 		C c = block.emplace!C(123);
 		assert(c !is null);
@@ -332,6 +341,7 @@ private struct Emplaced(T)
 }
 
 // Classes with throwing constructors
+version (D_BetterC) {} else
 @system unittest
 {
 	static class C
@@ -355,6 +365,7 @@ private struct Emplaced(T)
 }
 
 // Nested classes
+version (D_BetterC) {} else
 @system unittest
 {
 	static class Outer
@@ -434,6 +445,7 @@ private struct Emplaced(T)
 }
 
 // Nested class + immutable + opCast on outer class
+version (D_BetterC) {} else
 @system unittest
 {
 	static class Outer
@@ -463,6 +475,7 @@ private struct Emplaced(T)
 }
 
 // Nested class + immutable + alias this
+version (D_BetterC) {} else
 @system unittest
 {
 	static class Outer
@@ -516,7 +529,8 @@ private struct Emplaced(T)
 		}
 	}
 
-	auto block = UninitializedBlock(new void[](S.sizeof));
+	static align(S.alignof) void[S.sizeof] buf;
+	auto block = UninitializedBlock(buf[]);
 	() @safe {
 		S* s = block.emplace!S(123, "hello");
 		assert(s !is null);
@@ -537,7 +551,8 @@ private struct Emplaced(T)
 	}
 
 	{
-		auto block = UninitializedBlock(new void[](U.sizeof));
+		static align(U.alignof) void[U.sizeof] buf;
+		auto block = UninitializedBlock(buf[]);
 		() @safe {
 			U* u = block.emplace!U(123);
 			assert(u !is null);
@@ -545,7 +560,8 @@ private struct Emplaced(T)
 		}();
 	}
 	{
-		auto block = UninitializedBlock(new void[](U.sizeof));
+		static align(U.alignof) void[U.sizeof] buf;
+		auto block = UninitializedBlock(buf[]);
 		() @safe {
 			U* u = block.emplace!U("hello");
 			assert(u !is null);
@@ -561,7 +577,8 @@ private struct Emplaced(T)
 	static union U { int n; string s; }
 
 	{
-		auto block = UninitializedBlock(new void[](S.sizeof));
+		static align(S.alignof) void[S.sizeof] buf;
+		auto block = UninitializedBlock(buf[]);
 		() @safe {
 			S* s = block.emplace!S(S(123, "hello"));
 			assert(s !is null);
@@ -570,7 +587,8 @@ private struct Emplaced(T)
 		}();
 	}
 	{
-		auto block = UninitializedBlock(new void[](U.sizeof));
+		static align(U.alignof) void[U.sizeof] buf;
+		auto block = UninitializedBlock(buf[]);
 		() @safe {
 			U* u = block.emplace!U(U(123));
 			assert(u !is null);
@@ -578,7 +596,8 @@ private struct Emplaced(T)
 		}();
 	}
 	{
-		auto block = UninitializedBlock(new void[](U.sizeof));
+		static align(U.alignof) void[U.sizeof] buf;
+		auto block = UninitializedBlock(buf[]);
 		() @safe {
 			U initializer = { s: "hello" };
 			U* u = block.emplace!U(initializer);
@@ -593,7 +612,8 @@ private struct Emplaced(T)
 {
 	static struct S { int n; }
 
-	auto block = UninitializedBlock(new void[](S.sizeof));
+	static align(S.alignof) void[S.sizeof] buf;
+	auto block = UninitializedBlock(buf[]);
 	() @safe {
 		auto s = block.emplace!(immutable(S))(immutable(S)(123));
 		assert(s !is null);
@@ -602,6 +622,7 @@ private struct Emplaced(T)
 }
 
 // Nested structs
+version (D_BetterC) {} else
 @system unittest
 {
 	int n = 456;
@@ -646,24 +667,44 @@ private struct Emplaced(T)
 	}
 }
 
-// Builtins and enums
+// BetterC-compatible builtins and enums
 @system unittest
 {
-	import std.meta: AliasSeq, Map = staticMap;
+	import std.meta: AliasSeq;
 
 	enum E { a = 123 }
 
 	alias TestTypes = AliasSeq!(
 		int, double, char,
-		int*, int[], int[int], int function(), typeof(null),
+		int*, int[], int function(), typeof(null),
 		E
 	);
 
 	alias testValues = AliasSeq!(
 		123, 1.23, 'a',
-		null, [1, 2, 3], [1: 2, 3: 4], function int() => 123, null,
+		null, [1, 2, 3], function int() => 123, null,
 		E.a
 	);
+
+	static foreach (i, T; TestTypes) {{
+		static align(T.alignof) void[T.sizeof] buf;
+		auto block = UninitializedBlock(buf[]);
+		() @safe {
+			auto ptr = block.emplace!T(testValues[i]);
+			assert(ptr !is null);
+			assert(*ptr == testValues[i]);
+		}();
+	}}
+}
+
+// Druntime-dependent builtins
+version (D_BetterC) {} else
+@system unittest
+{
+	import std.meta: AliasSeq;
+
+	alias TestTypes = AliasSeq!(int[int]);
+	alias testValues = AliasSeq!([1: 2, 3: 4]);
 
 	static foreach (i, T; TestTypes) {{
 		auto block = UninitializedBlock(new void[](T.sizeof));
@@ -784,12 +825,16 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 version (unittest) {
 	private void checkInit(T)()
 	{
-		static if (is(T == class))
+		static if (is(T == class)) {
 			enum size = __traits(classInstanceSize, T);
-		else
+			enum alignment = __traits(classInstanceAlignment, T);
+		} else {
 			enum size = T.sizeof;
+			enum alignment = T.alignof;
+		}
 
-		auto block = UninitializedBlock(new void[](size));
+		static align(alignment) void[size] buf;
+		auto block = UninitializedBlock(buf[]);
 
 		static if (is(T == class)) {
 			auto expected = cast(const(ubyte[])) __traits(initSymbol, T);
@@ -868,13 +913,6 @@ version (unittest) {
 		void opAssign(typeof(this) rhs) { x = 0xDEADBEEF; }
 	}
 
-	int n;
-	struct Nested
-	{
-		int fun() { return n; }
-	}
-	static assert(__traits(isNested, Nested));
-
 	static union Union
 	{
 		double d;
@@ -889,7 +927,6 @@ version (unittest) {
 		NoDefaultInit,
 		InitMember,
 		OpAssign,
-		Nested,
 		Union
 	);
 
@@ -897,7 +934,22 @@ version (unittest) {
 		checkInit!T();
 }
 
+// Nested struct
+version (D_BetterC) {} else
+@system unittest
+{
+	int n;
+	struct Nested
+	{
+		int fun() { return n; }
+	}
+	static assert(__traits(isNested, Nested));
+
+	checkInit!Nested();
+}
+
 // Class types
+version (D_BetterC) {} else
 @system unittest
 {
 	static class DefaultValue { int x; }
@@ -911,13 +963,6 @@ version (unittest) {
 		static immutable init = new immutable(InitMember)(0xDEADBEEF);
 	}
 
-	int n;
-	class Nested
-	{
-		int fun() { return n; }
-	}
-	static assert(__traits(isNested, Nested));
-
 	class Big
 	{
 		int[100] a;
@@ -930,7 +975,6 @@ version (unittest) {
 		CustomValue,
 		NoDefaultInit,
 		InitMember,
-		Nested,
 		Big
 	);
 
@@ -938,30 +982,62 @@ version (unittest) {
 		checkInit!T();
 }
 
+// Nested class
+version (D_BetterC) {} else
+@system unittest
+{
+	int n;
+	class Nested
+	{
+		int fun() { return n; }
+	}
+	static assert(__traits(isNested, Nested));
+
+	checkInit!Nested();
+}
+
 // Static array types
 @system unittest
 {
 	static struct S { int x = 0xDEADBEEF; }
-	static class C { int x = 0xDEADBEEF; }
-	static interface I {}
-
-	int n;
-	struct Nested
-	{
-		int fun() { return n; }
-	}
 
 	import std.meta: AliasSeq;
 
 	alias TestTypes = AliasSeq!(
-		int[0], char[1], double[2], S[3], C[4], I[5], Nested[6], void[7]
+		int[0], char[1], double[2], S[3], void[4]
 	);
 
 	static foreach (T; TestTypes)
 		checkInit!T();
 }
 
+// Static array of nested struct
+version (D_BetterC) {} else
+@system unittest
+{
+	int n;
+	struct Nested
+	{
+		int fun() { return n; }
+	}
+
+	checkInit!(Nested[5]);
+}
+
+// Static array of class
+version (D_BetterC) {} else
+@system unittest
+{
+	static class C { int x = 0xDEADBEEF; }
+	static interface I {}
+
+	checkInit!(C[5]);
+	checkInit!(I[5]);
+}
+
 // Vector types
+// Disabled in BetterC due to https://issues.dlang.org/show_bug.cgi?id=19946
+version (D_BetterC) {} else
 version (D_SIMD)
 @system unittest
 {
@@ -971,13 +1047,15 @@ version (D_SIMD)
 	alias BaseTypes = AliasSeq!(void[16], float[4], int[4]);
 
 	static foreach (T; BaseTypes) {{
-		 auto block = UninitializedBlock(new void[](T.sizeof));
-		 auto p = block.emplaceInitializer!(__vector(T));
-		 assert(p !is null);
+		alias Vec = __vector(T);
+		static align(Vec.alignof) void[Vec.sizeof] buf;
+		auto block = UninitializedBlock(buf[]);
+		auto p = block.emplaceInitializer!Vec;
+		assert(p !is null);
 
-		 auto actual = *cast(const(ubyte)[T.sizeof]*) p;
-		 auto expected = cast(ubyte[T.sizeof]) T.init;
-		 assert(actual == expected);
+		auto actual = *cast(const(ubyte)[T.sizeof]*) p;
+		auto expected = cast(ubyte[T.sizeof]) T.init;
+		assert(actual == expected);
 	}}
 }
 
@@ -992,12 +1070,26 @@ version (D_SIMD)
 		void opAssign(typeof(this)) { this.x = 456; }
 	}
 
-	static class C
-	{
-		int x = 123;
-		this(int x) { this.x = x; }
-	}
+	enum IntEnum : int { a = 123 }
+	enum StringEnum : string { a = "hello" }
+	enum StructEnum : S { a = S(456) }
+	enum AssignEnum : OpAssign { a = OpAssign(789) }
+	enum ArrayEnum : int[5] { a = [1, 2, 3, 4, 5] }
 
+	import std.meta: AliasSeq;
+
+	alias TestTypes = AliasSeq!(
+		IntEnum, StringEnum, StructEnum, ArrayEnum
+	);
+
+	static foreach (T; TestTypes)
+		checkInit!T();
+}
+
+// Enum with nested-struct base type
+version (D_BetterC) {} else
+@system unittest
+{
 	int n;
 	struct Nested
 	{
@@ -1005,22 +1097,24 @@ version (D_SIMD)
 		int fun() { return n; }
 	}
 
-	enum IntEnum : int { a = 123 }
-	enum StringEnum : string { a = "hello" }
-	enum StructEnum : S { a = S(456) }
-	enum AssignEnum : OpAssign { a = OpAssign(789) }
-	enum ClassEnum : C { a = new C(456) }
 	enum NestedEnum : Nested { a = Nested(456) }
-	enum ArrayEnum : int[5] { a = [1, 2, 3, 4, 5] }
 
-	import std.meta: AliasSeq;
+	checkInit!NestedEnum();
+}
 
-	alias TestTypes = AliasSeq!(
-		IntEnum, StringEnum, StructEnum, ClassEnum, ArrayEnum
-	);
+// Enum with class base type
+version (D_BetterC) {} else
+@system unittest
+{
+	static class C
+	{
+		int x = 123;
+		this(int x) { this.x = x; }
+	}
 
-	static foreach (T; TestTypes)
-		checkInit!T();
+	enum ClassEnum : C { a = new C(456) }
+
+	checkInit!ClassEnum();
 }
 
 // Enum with immutable field in base type
@@ -1033,6 +1127,7 @@ version (D_SIMD)
 }
 
 // Enum with throwing destructor in base type
+version (D_Exceptions)
 @system unittest
 {
 	static struct S
@@ -1049,13 +1144,17 @@ version (D_SIMD)
 @system unittest
 {
 	static struct S { int n; }
-	static class C { int n; }
 
-	auto b1 = UninitializedBlock(new void[](32));
+	static align(S.alignof) void[32] buf;
+	auto b1 = UninitializedBlock(buf[]);
 	auto p1 = b1.emplaceInitializer!S;
 	assert(p1 !is null);
 
-	auto b2 = UninitializedBlock(new void[](32));
-	auto p2 = b2.emplaceInitializer!C;
-	assert(p2 !is null);
+	version (D_BetterC) {} else {
+		static class C { int n; }
+
+		auto b2 = UninitializedBlock(new void[](32));
+		auto p2 = b2.emplaceInitializer!C;
+		assert(p2 !is null);
+	}
 }

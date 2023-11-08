@@ -87,11 +87,12 @@ version (unittest) {
 // Can check for null
 @system unittest
 {
+	static void[1] buf;
 	TestBlock b1 = null;
-	TestBlock b2 = new void[](1);
+	TestBlock b2 = buf[];
 
 	assert(b1.isNull);
-	assert(!b2.isNull);
+		assert(!b2.isNull);
 }
 
 // A default-initialized Block is null
@@ -106,7 +107,8 @@ version (unittest) {
 {
 	import core.lifetime: move;
 
-	TestBlock first = new void[](1);
+	static void[1] buf;
+	TestBlock first = buf[];
 	TestBlock second = move(first);
 
 	assert(first.isNull);
@@ -116,8 +118,9 @@ version (unittest) {
 // Can check a Block's size
 @system unittest
 {
+	static void[123] buf;
 	TestBlock b1;
-	TestBlock b2 = new void[](123);
+	TestBlock b2 = buf[];
 	assert(b1.size == 0);
 	assert(b2.size == 123);
 }
@@ -161,7 +164,8 @@ template borrow(alias callback)
 
 @system unittest
 {
-	TestBlock block = new void[](1);
+	static void[1] buf;
+	TestBlock block = buf[];
 
 	() @safe {
 		// Memory is successfully borrowed...

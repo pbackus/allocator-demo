@@ -31,7 +31,11 @@ size_t roundToAligned(size_t size)
 
 @safe unittest
 {
-	size_t[] sizes = [1, 7, 8, 9, 15, 16, 17, maxAlignedSize - 1, maxAlignedSize];
+	import std.array: staticArray;
+
+	auto sizes = staticArray(
+		[1, 7, 8, 9, 15, 16, 17, maxAlignedSize - 1, maxAlignedSize]
+	);
 
 	foreach (size; sizes)
 	{
