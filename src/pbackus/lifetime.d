@@ -292,6 +292,10 @@ private struct Emplaced(T)
 	{
 		import core.lifetime: forward;
 
+		/+
+		Instead of checking for a valid initializer, let it fail naturally so
+		the user gets a meaningful error message.
+		+/
 		static if (Args.length == 1)
 			// Compiler won't expand the sequence automatically
 			payload = forward!(args[0]);
