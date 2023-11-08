@@ -717,8 +717,8 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		/+
 		Static arrays
 
-		No initSymbol and might have non-trivial assignment, so initialize each
-		element individually with a recursive call.
+		No initSymbol, and T.init may be large, so recursively initialize each
+		element one by one.
 
 		Arrays of void and arrays of class/interface references, which would
 		not be handled correctly by recursion, are already handled by the
@@ -737,20 +737,18 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		return (() @trusted => cast(T*) block.memory.ptr)();
 	} else {
 		/+
-		Types with trivial assignment
+		Builtin types and enums
 
-		Includes basic types, pointers, slices, associative arrays, SIMD
-		vectors, typeof(null), noreturn, and enums (regardless of base type).
+		No initSymbol, so we have to create our own.
 
-		Because trivial assignment is equivalent to blitting, we can blit
-		T.init using the normal assignment operator.
+		TODO: is there a size threshold where we should switch from a stack
+		variable to `static immutable`?
 		+/
+		auto initSymbol = T.init;
 		return () @trusted {
-			import std.traits: Unqual;
-
-			auto ptr = cast(Unqual!T*) block.memory.ptr;
-			*ptr = (Unqual!T).init;
-			return cast(T*) ptr;
+			auto initializer = cast(const(void[])) (&initSymbol)[0 .. 1];
+			block.memory[0 .. size] = initializer[];
+			return cast(T*) block.memory.ptr;
 		}();
 	}
 }
@@ -995,6 +993,15 @@ version (D_SIMD)
 
 	static foreach (T; TestTypes)
 		checkInit!T();
+}
+
+// Enum with immutable field in base type
+@system unittest
+{
+	static struct S { immutable int n = 123; }
+	enum E : S { a = S.init }
+
+	checkInit!E();
 }
 
 // Oversized blocks
