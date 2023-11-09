@@ -13,7 +13,7 @@ struct Unique(T, Allocator)
 	Safety invariant: if block is not null, it was allocated by allocator and
 	the start of its memory contains a valid object of type T.
 	+/
-	@system Block!Allocator storage;
+	private @system Block!Allocator storage;
 
 	static if (hasMember!(Allocator, "instance")) {
 		alias allocator = Allocator.instance;
