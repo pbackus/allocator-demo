@@ -195,7 +195,7 @@ the initializer.
 
 [issue8850]: https://issues.dlang.org/show_bug.cgi?id=8850
 +/
-auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
+RefType!T emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 {
 	import core.lifetime: forward;
 
