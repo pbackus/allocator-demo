@@ -5,19 +5,19 @@ import core.attribute: mustuse;
 /// Status code returned by container methods that allocate
 @mustuse struct Status
 {
-	private Code code;
+	private int code;
 
 	@safe pure nothrow @nogc
-	private this(Code code)
+	private this(int code)
 	{
 		this.code = code;
 	}
 
 	/// Returned on success
-	enum Status Ok = Status(Code.Ok);
+	enum Status Ok = Status(0);
 
 	/// Returned if allocation fails
-	enum Status AllocationFailure = Status(Code.AllocationFailure);
+	enum Status AllocationFailure = Status(1);
 
 	/// True if this `Status` is `Ok`
 	@safe pure nothrow @nogc
@@ -47,13 +47,10 @@ import core.attribute: mustuse;
 	@safe pure nothrow @nogc
 	string message() const
 	{
-		import std.traits: EnumMembers, getUDAs;
-
-		final switch (code) {
-			static foreach (member; EnumMembers!Code) {
-				case member:
-					return getUDAs!(member, Message)[0].text;
-			}
+		switch (code) {
+			case 0: return "Success";
+			case 1: return "Memory allocation failed";
+			default: return "Unknown failure";
 		}
 	}
 }
@@ -111,20 +108,4 @@ unittest
 
 	assertNotThrown(Status.Ok.enforceOk);
 	assertThrown(Status.AllocationFailure.enforceOk);
-}
-
-// Code values and messages
-private enum Code
-{
-	@Message("Success")
-	Ok,
-
-	@Message("Memory allocation failed")
-	AllocationFailure,
-}
-
-// UDA for Code enum
-private struct Message
-{
-	string text;
 }
