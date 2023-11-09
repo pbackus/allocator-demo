@@ -2,6 +2,7 @@ module pbackus.container.unique;
 
 import pbackus.allocator.block;
 import pbackus.traits;
+import pbackus.util;
 
 import core.lifetime: move;
 import std.traits: hasMember;
@@ -40,9 +41,8 @@ struct Unique(T, Allocator)
 		if (empty)
 			return;
 
-		auto storagePtr = (() @trusted => &storage)();
-		(*storagePtr).borrow!((void[] mem) {
-			auto ptr = (() @trusted => cast(RefType!T) mem.ptr)();
+		mixin(trusted!"storage").borrow!((void[] mem) {
+			auto ptr = mixin(trusted!q{ cast(RefType!T) mem.ptr });
 			static if (is(T == class) || is(T == interface))
 				destroy(ptr);
 			else
@@ -56,11 +56,8 @@ struct Unique(T, Allocator)
 			return;
 
 		destroyValue();
-
 		// Best effort - leak on deallocation failure
-		auto allocatorPtr = (() @trusted => &allocator)();
-		auto storagePtr = (() @trusted => &storage)();
-		(*allocatorPtr).deallocate(*storagePtr);
+		mixin(trusted!"allocator").deallocate(mixin(trusted!"storage"));
 	}
 
 	@trusted
