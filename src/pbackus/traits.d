@@ -18,3 +18,22 @@ unittest
 	static assert(storageSize!int == int.sizeof);
 	static assert(storageSize!C == __traits(classInstanceSize, C));
 }
+
+/// Type of a reference to an instance of `T`
+template RefType(T)
+{
+	static if (is(T == class))
+		alias RefType = T;
+	else
+		alias RefType = T*;
+}
+
+version (D_BetterC) {} else
+@safe pure nothrow @nogc
+unittest
+{
+	static class C { int data; }
+
+	static assert(is(RefType!int == int*));
+	static assert(is(RefType!C == C));
+}
