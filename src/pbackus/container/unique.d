@@ -10,8 +10,8 @@ import std.traits: hasMember;
 struct Unique(T, Allocator)
 {
 	/+
-	Safety invariant: if block is not null, the start of its memory contains a
-	valid object of type T.
+	Safety invariant: if block is not null, it was allocated by allocator and
+	the start of its memory contains a valid object of type T.
 	+/
 	@system Block!Allocator storage;
 
