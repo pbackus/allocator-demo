@@ -10,6 +10,8 @@ struct InSituRegion(size_t bufferSize)
 		size_t inUse;
 	}
 
+	@disable this(ref inout InSituRegion) inout;
+
 	@trusted pure nothrow @nogc
 	Block!InSituRegion allocate(size_t size)
 	{
