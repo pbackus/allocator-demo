@@ -1,6 +1,7 @@
 module pbackus.lifetime;
 
 import pbackus.traits;
+import pbackus.util;
 
 struct UninitializedBlock
 {
@@ -220,7 +221,7 @@ RefType!T emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 			Leave block uninitialized if constructor throws
 			@trusted ok because the aliasing is never exposed to @safe code
 			+/
-			void[] savedMemory = (() @trusted => block.memory)();
+			void[] savedMemory = mixin(trusted!"block.memory");
 			scope(failure) () @trusted { block.memory = savedMemory; }();
 		}
 
@@ -794,15 +795,15 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		+/
 		foreach (i; 0 .. n) {
 			size_t offset = i * E.sizeof;
-			auto eblock = (() @trusted => UninitializedBlock(
-				block.memory[offset .. offset + E.sizeof]
-			))();
+			auto eblock = mixin(trusted!q{
+				UninitializedBlock(block.memory[offset .. offset + E.sizeof])
+			});
 			// Exclude recursive call from @trusted for correct inference
 			auto eptr = eblock.emplaceInitializer!E;
 			assert(eptr !is null);
 		}
 
-		return (() @trusted => cast(T*) block.memory.ptr)();
+		return mixin(trusted!q{cast(T*) block.memory.ptr});
 	} else {
 		/+
 		Builtin types and enums
