@@ -9,9 +9,6 @@ import std.traits: hasMember;
 
 struct Unique(T, Allocator)
 {
-	static assert(!(is(T == class) || is(T == interface)),
-		"Reference types are not supported yet");
-
 	/+
 	Safety invariant: if block is not null, the start of its memory contains a
 	valid object of type T.
