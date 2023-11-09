@@ -1,5 +1,7 @@
 module pbackus.lifetime;
 
+import pbackus.traits;
+
 struct UninitializedBlock
 {
 	/+
@@ -206,10 +208,7 @@ auto emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 		/+
 		Non-default initialization
 		+/
-		static if (is(T == class))
-			enum size = __traits(classInstanceSize, T);
-		else
-			enum size = T.sizeof;
+		enum size = storageSize!T;
 
 		if (block.size < size)
 			return null;
@@ -738,10 +737,7 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 	static assert(!is(T == interface),
 		"`interface " ~ T.stringof ~ "` cannot be initialized");
 
-	static if (is(T == class))
-		enum size = __traits(classInstanceSize, T);
-	else
-		enum size = T.sizeof;
+	enum size = storageSize!T;
 
 	if (block.size < size)
 		return null;
@@ -825,13 +821,12 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 version (unittest) {
 	private void checkInit(T)()
 	{
-		static if (is(T == class)) {
-			enum size = __traits(classInstanceSize, T);
+		enum size = storageSize!T;
+
+		static if (is(T == class))
 			enum alignment = __traits(classInstanceAlignment, T);
-		} else {
-			enum size = T.sizeof;
+		else
 			enum alignment = T.alignof;
-		}
 
 		static align(alignment) void[size] buf;
 		auto block = UninitializedBlock(buf[]);

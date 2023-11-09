@@ -11,6 +11,7 @@ alias ModuleNames = AliasSeq!(
 	"pbackus.container.unique",
 
 	"pbackus.lifetime",
+	"pbackus.traits",
 );
 
 extern(C) int main()
