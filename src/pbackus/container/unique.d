@@ -1,8 +1,9 @@
 module pbackus.container.unique;
 
 import pbackus.allocator.block;
+import pbackus.traits;
 
-import core.lifetime;
+import core.lifetime: move;
 import std.traits: hasMember;
 
 struct Unique(T, Allocator)
@@ -34,6 +35,34 @@ struct Unique(T, Allocator)
 
 	@disable this(ref inout typeof(this)) inout;
 
+	void destroyValue()
+	{
+		if (empty)
+			return;
+
+		auto storagePtr = (() @trusted => &storage)();
+		(*storagePtr).borrow!((void[] mem) {
+			auto ptr = (() @trusted => cast(RefType!T) mem.ptr)();
+			static if (is(T == class) || is(T == interface))
+				destroy(ptr);
+			else
+				destroy(*ptr);
+		});
+	}
+
+	~this()
+	{
+		if (empty)
+			return;
+
+		destroyValue();
+
+		// Best effort - leak on deallocation failure
+		auto allocatorPtr = (() @trusted => &allocator)();
+		auto storagePtr = (() @trusted => &storage)();
+		(*allocatorPtr).deallocate(*storagePtr);
+	}
+
 	@trusted
 	bool empty() const
 	{
@@ -42,7 +71,11 @@ struct Unique(T, Allocator)
 }
 
 version (unittest) {
-	private struct AllocatorStub {}
+	private struct AllocatorStub
+	{
+		@safe pure nothrow @nogc:
+		void deallocate(ref Block!AllocatorStub) {}
+	}
 }
 
 // empty
@@ -58,4 +91,39 @@ version (unittest) {
 		assert(u1.empty);
 		assert(!u2.empty);
 	}();
+}
+
+// destruction
+@system unittest
+{
+	struct Probe
+	{
+		static bool destroyed;
+		~this()  @safe { destroyed = true; }
+	}
+
+	static Probe probe;
+
+	{
+		auto block = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
+		auto u = Unique!(Probe, AllocatorStub)(move(block), AllocatorStub());
+		Probe.destroyed = false;
+	}
+	assert(Probe.destroyed == true);
+
+	{
+		auto block = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
+		auto u = Unique!(Probe, AllocatorStub)(move(block), AllocatorStub());
+		Probe.destroyed = false;
+		() @safe { destroy(u); }();
+		assert(Probe.destroyed == true);
+	}
+
+	{
+		auto block = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
+		auto u = Unique!(Probe, AllocatorStub)(move(block), AllocatorStub());
+		Probe.destroyed = false;
+		() @safe { u.destroyValue(); }();
+		assert(Probe.destroyed == true);
+	}
 }
