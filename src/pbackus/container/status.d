@@ -17,7 +17,7 @@ import core.attribute: mustuse;
 	enum Status Ok = Status(0);
 
 	/// Returned if allocation fails
-	enum Status AllocationFailure = Status(1);
+	enum Status AllocFailed = Status(1);
 
 	/// True if this `Status` is `Ok`
 	@safe pure nothrow @nogc
@@ -59,7 +59,7 @@ import core.attribute: mustuse;
 @safe pure nothrow @nogc
 unittest
 {
-	static assert(Status.Ok != Status.AllocationFailure);
+	static assert(Status.Ok != Status.AllocFailed);
 }
 
 // Can't be ignored
@@ -76,7 +76,7 @@ unittest
 unittest
 {
 	string okMsg = Status.Ok.message;
-	string failMsg = Status.AllocationFailure.message;
+	string failMsg = Status.AllocFailed.message;
 	assert(okMsg != failMsg);
 }
 
@@ -85,7 +85,7 @@ unittest
 unittest
 {
 	assert(Status.Ok.isOk);
-	assert(!Status.AllocationFailure.isOk);
+	assert(!Status.AllocFailed.isOk);
 }
 
 // assumeOk
@@ -96,7 +96,7 @@ unittest
 	import std.exception: assertThrown, assertNotThrown;
 	
 	assertNotThrown!Error(Status.Ok.assumeOk);
-	assertThrown!Error(Status.AllocationFailure.assumeOk);
+	assertThrown!Error(Status.AllocFailed.assumeOk);
 }
 
 // enforceOk
@@ -107,5 +107,5 @@ unittest
 	import std.exception: assertThrown, assertNotThrown;
 
 	assertNotThrown(Status.Ok.enforceOk);
-	assertThrown(Status.AllocationFailure.enforceOk);
+	assertThrown(Status.AllocFailed.enforceOk);
 }
