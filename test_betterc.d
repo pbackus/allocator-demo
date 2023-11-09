@@ -8,6 +8,7 @@ alias ModuleNames = AliasSeq!(
 	"pbackus.allocator.region",
 
 	"pbackus.container.status",
+	"pbackus.container.unique",
 
 	"pbackus.lifetime",
 );
