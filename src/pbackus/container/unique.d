@@ -1,3 +1,9 @@
+/++
+Owning reference to a single value
+
+License: Boost License 1.0
+Authors: Paul Backus
++/
 module pbackus.container.unique;
 
 import pbackus.allocator.block;
@@ -7,21 +13,29 @@ import pbackus.util;
 import core.lifetime: move;
 import std.traits: hasMember;
 
+/++
+A unique, owning reference to an instance of `T`
+
+The value is stored in memory allocated by an `Allocator`.
+
+`Unique` destroys its value and deallocates its memory when it goes out of
+scope. To extend (or shorten) its lifetime, use `core.lifetime.move`.
++/
 struct Unique(T, Allocator)
 {
 	/+
-	Safety invariant: if block is not null, it was allocated by allocator and
-	the start of its memory contains a valid object of type T.
+	Safety invariant: a `Unique` is a safe value as long as one of the
+	following is true:
+		1. Its `storage` is `null`.
+		2. Its `storage` was allocated by its `allocator` and contains an
+		   instance of `T` at offset 0.
 	+/
+
 	private @system Block!Allocator storage;
 
 	static if (hasMember!(Allocator, "instance")) {
 		alias allocator = Allocator.instance;
 	} else {
-		/+
-		Safety invariant: between the time a block is allocated with it and
-		the time that block is deallocated, allocator must not be mutated.
-		+/
 		private @system Allocator allocator;
 	}
 
@@ -33,6 +47,7 @@ struct Unique(T, Allocator)
 
 	@disable this(ref inout typeof(this)) inout;
 
+	/// Calls the value's destructor
 	void destroyValue()
 	{
 		if (empty)
@@ -47,16 +62,21 @@ struct Unique(T, Allocator)
 		});
 	}
 
+	/++
+	Destroys the value and deallocates its memory
+
+	If deallocation fails, the memory will be leaked.
+	+/
 	~this()
 	{
 		if (empty)
 			return;
 
 		destroyValue();
-		// Best effort - leak on deallocation failure
 		mixin(trusted!"allocator").deallocate(mixin(trusted!"storage"));
 	}
 
+	/// True if this `Unique` has no value
 	@trusted
 	bool empty() const
 	{
