@@ -1,11 +1,27 @@
+/++
+Allocator that uses the C library's `malloc`
+
+License: Boost License 1.0
+Authors: Paul Backus
++/
 module pbackus.allocator.mallocator;
 
 import pbackus.allocator.block;
 
+/// The standard C heap allocator
 struct Mallocator
 {
+	/// Global instance
 	static shared Mallocator instance;
 
+	/++
+	Allocates `size` bytes with `malloc`
+
+	Params:
+		size = Bytes to allocate
+
+	Returns: The allocated block on success, or a null block on failure.
+	+/
 	@trusted pure nothrow @nogc
 	Block!Mallocator allocate(size_t size) const shared
 	{
@@ -18,12 +34,20 @@ struct Mallocator
 		return p ? Block!Mallocator(p[0 .. size]) : Block!Mallocator.init;
 	}
 
+	/++
+	True if `block` is not null
+
+	The only `@safe` way to get a `Block!Mallocator` is to allocate it with
+	`Mallocator`, so this can only give an incorrect result when called with an
+	unsafe `Block` from `@system` code.
+	+/
 	@safe pure nothrow @nogc
 	bool owns(ref const Block!Mallocator block) const shared
 	{
 		return !block.isNull;
 	}
 
+	/// Deallocates `block` with `free`
 	@trusted pure nothrow @nogc
 	void deallocate(ref Block!Mallocator block) const shared
 	{
