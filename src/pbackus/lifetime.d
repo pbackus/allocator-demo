@@ -1167,7 +1167,7 @@ version (D_Exceptions)
 		~this() @safe pure { throw new Exception("oops"); }
 	}
 	enum E : S { a = S.init }
-	
+
 	checkInit!E();
 }
 

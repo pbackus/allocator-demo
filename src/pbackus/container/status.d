@@ -100,7 +100,7 @@ version (D_Exceptions)
 unittest
 {
 	import std.exception: assertThrown, assertNotThrown;
-	
+
 	assertNotThrown!Error(Status.Ok.assumeOk);
 	assertThrown!Error(Status.AllocFailed.assumeOk);
 }

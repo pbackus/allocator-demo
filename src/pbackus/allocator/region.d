@@ -35,7 +35,7 @@ struct InSituRegion(size_t bufferSize)
 
 	Params:
 		size = Bytes to allocate.
-	
+
 	Returns: The allocated block on success, or a null block on failure.
 	+/
 	@trusted pure nothrow @nogc
