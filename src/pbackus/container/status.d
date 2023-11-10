@@ -41,7 +41,11 @@ import core.attribute: mustuse;
 	}
 
 	version (D_Exceptions)
-	/// Throw an exception if not `Ok`.
+	/++
+	Throw an exception if not `Ok`.
+
+	Not available in BetterC or with `-nothrow`.
+	+/
 	@safe pure
 	void enforceOk() const
 	{
