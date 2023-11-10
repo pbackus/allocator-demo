@@ -92,7 +92,7 @@ version (unittest) {
 	TestBlock b2 = buf[];
 
 	assert(b1.isNull);
-		assert(!b2.isNull);
+	assert(!b2.isNull);
 }
 
 // A default-initialized Block is null
