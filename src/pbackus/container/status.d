@@ -78,7 +78,7 @@ unittest
 {
 	static Status getStatus() { return Status.Ok; }
 
-	assert(!__traits(compiles, { getStatus(); }));
+	assert(!__traits(compiles, { getStatus; }));
 }
 
 // Distinct messages

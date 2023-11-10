@@ -21,7 +21,7 @@ extern(C) int main()
 
 	static foreach (moduleName; ModuleNames) {
 		static foreach (test; __traits(getUnitTests, imported!moduleName)) {
-			test();
+			test;
 		}
 	}
 

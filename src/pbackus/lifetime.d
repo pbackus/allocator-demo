@@ -902,10 +902,10 @@ version (unittest) {
 
 
 	static foreach (T; BasicTypes)
-		checkInit!T();
+		checkInit!T;
 
 	static foreach (T; Map!(ImmutableOf, BasicTypes))
-		checkInit!T();
+		checkInit!T;
 }
 
 // Pointer, slice, and associative array types
@@ -919,10 +919,10 @@ version (unittest) {
 	);
 
 	static foreach (T; TestTypes)
-		checkInit!T();
+		checkInit!T;
 
 	static foreach (T; Map!(ImmutableOf, TestTypes))
-		checkInit!T();
+		checkInit!T;
 }
 
 // Struct and union types
@@ -962,7 +962,7 @@ version (unittest) {
 	);
 
 	static foreach (T; TestTypes)
-		checkInit!T();
+		checkInit!T;
 }
 
 // Nested struct
@@ -976,7 +976,7 @@ version (D_BetterC) {} else
 	}
 	static assert(__traits(isNested, Nested));
 
-	checkInit!Nested();
+	checkInit!Nested;
 }
 
 // Class types
@@ -1010,7 +1010,7 @@ version (D_BetterC) {} else
 	);
 
 	static foreach (T; TestTypes)
-		checkInit!T();
+		checkInit!T;
 }
 
 // Nested class
@@ -1024,7 +1024,7 @@ version (D_BetterC) {} else
 	}
 	static assert(__traits(isNested, Nested));
 
-	checkInit!Nested();
+	checkInit!Nested;
 }
 
 // Static array types
@@ -1039,7 +1039,7 @@ version (D_BetterC) {} else
 	);
 
 	static foreach (T; TestTypes)
-		checkInit!T();
+		checkInit!T;
 }
 
 // Static array of nested struct
@@ -1114,7 +1114,7 @@ version (D_SIMD)
 	);
 
 	static foreach (T; TestTypes)
-		checkInit!T();
+		checkInit!T;
 }
 
 // Enum with nested-struct base type
@@ -1130,7 +1130,7 @@ version (D_BetterC) {} else
 
 	enum NestedEnum : Nested { a = Nested(456) }
 
-	checkInit!NestedEnum();
+	checkInit!NestedEnum;
 }
 
 // Enum with class base type
@@ -1145,7 +1145,7 @@ version (D_BetterC) {} else
 
 	enum ClassEnum : C { a = new C(456) }
 
-	checkInit!ClassEnum();
+	checkInit!ClassEnum;
 }
 
 // Enum with immutable field in base type
@@ -1154,7 +1154,7 @@ version (D_BetterC) {} else
 	static struct S { immutable int n = 123; }
 	enum E : S { a = S.init }
 
-	checkInit!E();
+	checkInit!E;
 }
 
 // Enum with throwing destructor in base type
@@ -1168,7 +1168,7 @@ version (D_Exceptions)
 	}
 	enum E : S { a = S.init }
 
-	checkInit!E();
+	checkInit!E;
 }
 
 // Oversized blocks

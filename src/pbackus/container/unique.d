@@ -72,7 +72,7 @@ struct Unique(T, Allocator)
 		if (empty)
 			return;
 
-		destroyValue();
+		destroyValue;
 		mixin(trusted!"allocator").deallocate(mixin(trusted!"storage"));
 	}
 
@@ -137,7 +137,7 @@ version (unittest) {
 		auto block = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
 		auto u = Unique!(Probe, AllocatorStub)(move(block), AllocatorStub());
 		Probe.destroyed = false;
-		() @safe { u.destroyValue(); }();
+		() @safe { u.destroyValue; }();
 		assert(Probe.destroyed == true);
 	}
 }
