@@ -15,3 +15,5 @@ allocator-demo-test-*
 *.obj
 *.lst
 tags
+skeleton.html
+generated-docs/
