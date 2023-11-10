@@ -1,5 +1,5 @@
 /++
-Block type that represents an allocation
+Block type that represents an allocation.
 
 License: Boost License 1.0
 Authors: Paul Backus
@@ -7,7 +7,7 @@ Authors: Paul Backus
 module pbackus.allocator.block;
 
 /++
-A block of memory allocated by an `Allocator`
+A block of memory allocated by an `Allocator`.
 
 $(H2 Safety Invariant)
 
@@ -45,27 +45,27 @@ considered a breaking API change.
 +/
 struct Block(Allocator)
 {
-	/// A block of allocated memory, or `null`
+	/// A block of allocated memory, or `null`.
 	@system void[] memory;
 
-	/// Creating a `Block` is `@system`
+	/// Creating a `Block` is `@system`.
 	@system pure nothrow @nogc
 	this(void[] memory)
 	{
 		this.memory = memory;
 	}
 
-	/// Copying is disabled
+	/// Copying is disabled.
 	@disable this(ref inout Block) inout;
 
-	/// True if `memory` is `null`, otherwise false
+	/// True if `memory` is `null`, otherwise false.
 	@safe pure nothrow @nogc
 	bool isNull() const
 	{
 		return this is Block.init;
 	}
 
-	/// Size of `memory` in bytes
+	/// Size of `memory` in bytes.
 	@trusted pure nothrow @nogc
 	size_t size() const
 	{
@@ -171,7 +171,7 @@ version (unittest) {
 }
 
 /++
-Safely access a `Block`'s memory
+Safely access a `Block`'s memory.
 
 The memory is passed to `callback` as a `scope void[]`, and `block` is set to
 null for the duration of the borrow.
@@ -184,7 +184,7 @@ Params:
 template borrow(alias callback)
 {
 	/++
-	The actual `borrow` function
+	The actual `borrow` function.
 
 	Params:
 		block = Block to borrow from.

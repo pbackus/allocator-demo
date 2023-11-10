@@ -1,5 +1,5 @@
 /++
-Safe `emplace` implementation
+Safe `emplace` implementation.
 
 License: Boost License 1.0
 Authors: Paul Backus
@@ -10,7 +10,7 @@ import pbackus.traits;
 import pbackus.util;
 
 /++
-A block of memory that can be safely initialized
+A block of memory that can be safely initialized.
 
 An `UninitializedBlock` can only be created in `@system` or `@trusted` code.
 Before allowing `@safe` code to access it, your `@trusted` code must ensure
@@ -37,31 +37,31 @@ objects = https://dlang.org/spec/intro.html#object-model
 +/
 struct UninitializedBlock
 {
-	/// A block of uninitialized memory, or `null`
+	/// A block of uninitialized memory, or `null`.
 	@system void[] memory;
 
-	/// Creating an `UninitializedBlock` is `@system`
+	/// Creating an `UninitializedBlock` is `@system`.
 	@system pure nothrow @nogc
 	this(void[] memory) { this.memory = memory; }
 
 	/// Copying is disabled
 	@disable this(ref inout UninitializedBlock) inout;
 
-	/// True if `memory` is `null`, otherwise false
+	/// True if `memory` is `null`, otherwise false.
 	@safe pure nothrow @nogc
 	bool isNull() const
 	{
 		return this is UninitializedBlock.init;
 	}
 
-	/// Size of `memory` in bytes
+	/// Size of `memory` in bytes.
 	@trusted pure nothrow @nogc
 	size_t size() const
 	{
 		return memory.length;
 	}
 
-	/// True if `memory` is properly aligned to hold a `T`
+	/// True if `memory` is properly aligned to hold a `T`.
 	@trusted pure nothrow @nogc
 	bool isAlignedFor(T)() const
 	{
@@ -209,7 +209,7 @@ version (D_BetterC) {} else
 }
 
 /++
-Constructs or initializes an instance of `T` in uninitialized memory
+Constructs or initializes an instance of `T` in uninitialized memory.
 
 The block's size and alignment must be sufficient to accomodate `T`. If they
 are not, initialization will fail.
@@ -218,8 +218,8 @@ If initialization succeeds, `block` is set to `UninitializedBlock.init` so that
 the same block cannot be used twice.
 
 Params:
-	block = The memory to use
-	args = Initial value or constructor arguments
+	block = The memory to use.
+	args = Initial value or constructor arguments.
 
 Returns: A pointer or class reference to the resulting object on success,
 `null` on failure.
@@ -752,7 +752,7 @@ version (D_BetterC) {} else
 }
 
 /++
-Default-initializes an instance of `T` in uninitialized memory
+Default-initializes an instance of `T` in uninitialized memory.
 
 The block's size and alignment must be sufficient to accomodate `T`. If they
 are not, initialization will fail.
@@ -761,7 +761,7 @@ If initialization succeeds, `block` is set to `UninitializedBlock.init` so that
 the same block cannot be used twice.
 
 Params:
-	block = The memory to initialize
+	block = The memory to initialize.
 
 Returns: a pointer or class reference to the initialized object on success,
 `null` on failure.

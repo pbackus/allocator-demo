@@ -1,5 +1,5 @@
 /++
-Status codes
+Status codes.
 
 License: Boost License 1.0
 Authors: Paul Backus
@@ -8,7 +8,7 @@ module pbackus.container.status;
 
 import core.attribute: mustuse;
 
-/// Status code returned by container methods that allocate
+/// Status code returned by container methods that allocate.
 @mustuse struct Status
 {
 	private int code;
@@ -19,20 +19,20 @@ import core.attribute: mustuse;
 		this.code = code;
 	}
 
-	/// Returned on success
+	/// Returned on success.
 	enum Status Ok = Status(0);
 
-	/// Returned if allocation fails
+	/// Returned if allocation fails.
 	enum Status AllocFailed = Status(1);
 
-	/// True if this `Status` is `Ok`
+	/// True if this `Status` is `Ok`.
 	@safe pure nothrow @nogc
 	bool isOk() const
 	{
 		return this == Ok;
 	}
 
-	/// Abort process if not `Ok`
+	/// Abort process if not `Ok`.
 	@safe pure nothrow @nogc
 	void assumeOk() const
 	{
@@ -41,7 +41,7 @@ import core.attribute: mustuse;
 	}
 
 	version (D_Exceptions)
-	/// Throw an exception if not `Ok`
+	/// Throw an exception if not `Ok`.
 	@safe pure
 	void enforceOk() const
 	{
@@ -49,7 +49,7 @@ import core.attribute: mustuse;
 		enforce(isOk, message);
 	}
 
-	/// Description of this `Status`
+	/// Description of this `Status`.
 	@safe pure nothrow @nogc
 	string message() const
 	{

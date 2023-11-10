@@ -1,5 +1,5 @@
 /++
-Owning reference to a single value
+Owning reference to a single value.
 
 License: Boost License 1.0
 Authors: Paul Backus
@@ -14,7 +14,7 @@ import core.lifetime: move;
 import std.traits: hasMember;
 
 /++
-A unique, owning reference to an instance of `T`
+A unique, owning reference to an instance of `T`.
 
 The value is stored in memory allocated by an `Allocator`.
 
@@ -47,7 +47,7 @@ struct Unique(T, Allocator)
 
 	@disable this(ref inout typeof(this)) inout;
 
-	/// Calls the value's destructor
+	/// Calls the value's destructor.
 	void destroyValue()
 	{
 		if (empty)
@@ -63,7 +63,7 @@ struct Unique(T, Allocator)
 	}
 
 	/++
-	Destroys the value and deallocates its memory
+	Destroys the value and deallocates its memory.
 
 	If deallocation fails, the memory will be leaked.
 	+/
@@ -76,7 +76,7 @@ struct Unique(T, Allocator)
 		mixin(trusted!"allocator").deallocate(mixin(trusted!"storage"));
 	}
 
-	/// True if this `Unique` has no value
+	/// True if this `Unique` has no value.
 	@trusted
 	bool empty() const
 	{

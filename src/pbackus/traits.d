@@ -1,12 +1,12 @@
 /++
-Templates for introspection
+Templates for introspection.
 
 License: Boost License 1.0
 Authors: Paul Backus
 +/
 module pbackus.traits;
 
-/// Amount of memory needed to hold an instance of `T`
+/// Amount of memory needed to hold an instance of `T`.
 template storageSize(T)
 {
 	static if (is(T == class))
@@ -25,7 +25,7 @@ unittest
 	static assert(storageSize!C == __traits(classInstanceSize, C));
 }
 
-/// Type of a reference to an instance of `T`
+/// Type of a reference to an instance of `T`.
 template RefType(T)
 {
 	static if (is(T == class))

@@ -1,5 +1,5 @@
 /++
-Allocator that uses D's built-in GC
+Allocator that uses D's built-in GC/
 
 License: Boost License 1.0
 Authors: Paul Backus
@@ -13,17 +13,17 @@ import core.memory: GC;
 version (D_BetterC) {} else:
 
 /++
-The D runtime's garbage-collected heap allocator
+The D runtime's garbage-collected heap allocator.
 
 Not available in BetterC.
 +/
 struct GCAllocator
 {
-	/// Global instance
+	/// Global instance.
 	static shared GCAllocator instance;
 
 	/++
-	Allocates `size` bytes with the GC
+	Allocates `size` bytes with the GC.
 
 	Params:
 		size = Bytes to allocate.
@@ -41,7 +41,7 @@ struct GCAllocator
 	}
 
 	/++
-	True if `block` is not null
+	True if `block` is not null.
 
 	The only `@safe` way to get a `Block!GCAllocator` is to allocate it with
 	`GCAllocator`, so this can only give an incorrect result when called with
@@ -53,7 +53,7 @@ struct GCAllocator
 		return !block.isNull;
 	}
 
-	/// Sets `block` to null so the GC can free it automatically
+	/// Sets `block` to null so the GC can free it automatically.
 	@safe pure nothrow @nogc
 	void deallocate(ref Block!GCAllocator block) const shared
 	{

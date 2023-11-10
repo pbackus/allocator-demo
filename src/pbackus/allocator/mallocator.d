@@ -1,5 +1,5 @@
 /++
-Allocator that uses the C library's `malloc`
+Allocator that uses the C library's `malloc`.
 
 License: Boost License 1.0
 Authors: Paul Backus
@@ -8,14 +8,14 @@ module pbackus.allocator.mallocator;
 
 import pbackus.allocator.block;
 
-/// The standard C heap allocator
+/// The standard C heap allocator.
 struct Mallocator
 {
-	/// Global instance
+	/// Global instance.
 	static shared Mallocator instance;
 
 	/++
-	Allocates `size` bytes with `malloc`
+	Allocates `size` bytes with `malloc`.
 
 	Params:
 		size = Bytes to allocate
@@ -35,7 +35,7 @@ struct Mallocator
 	}
 
 	/++
-	True if `block` is not null
+	True if `block` is not null.
 
 	The only `@safe` way to get a `Block!Mallocator` is to allocate it with
 	`Mallocator`, so this can only give an incorrect result when called with an
@@ -47,7 +47,7 @@ struct Mallocator
 		return !block.isNull;
 	}
 
-	/// Deallocates `block` with `free`
+	/// Deallocates `block` with `free`.
 	@trusted pure nothrow @nogc
 	void deallocate(ref Block!Mallocator block) const shared
 	{

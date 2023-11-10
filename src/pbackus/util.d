@@ -1,12 +1,12 @@
 /++
-Miscellaneous utilities
+Miscellaneous utilities.
 
 License: Boost License 1.0
 Authors: Paul Backus
 +/
 module pbackus.util;
 
-/// String mixin that evaluates `expr` in a @trusted context
+/// String mixin that evaluates `expr` in a @trusted context.
 enum trusted(string expr) = "(auto ref () @trusted => " ~ expr ~ ")()";
 
 @safe unittest

@@ -1,5 +1,5 @@
 /++
-Allocator that draws from a single chunk of memory
+Allocator that draws from a single chunk of memory.
 
 License: Boost License 1.0
 Authors: Paul Backus
@@ -10,7 +10,7 @@ import pbackus.allocator.alignment;
 import pbackus.allocator.block;
 
 /++
-Bump-the-pointer allocator that uses an internal fixed-size buffer
+Bump-the-pointer allocator that uses an internal fixed-size buffer.
 
 Params:
 	bufferSize = Size of the internal buffer.
@@ -22,11 +22,11 @@ struct InSituRegion(size_t bufferSize)
 		size_t inUse;
 	}
 
-	/// Copying is disabled
+	/// Copying is disabled.
 	@disable this(ref inout InSituRegion) inout;
 
 	/++
-	Allocates at least `size` bytes
+	Allocates at least `size` bytes.
 
 	The requested size is rounded up to a multiple of [platformAlignment].
 
@@ -55,7 +55,7 @@ struct InSituRegion(size_t bufferSize)
 		return move(result);
 	}
 
-	/// True if `block` was allocated by this `InSituRegion`
+	/// True if `block` was allocated by this `InSituRegion`.
 	@trusted pure nothrow @nogc
 	bool owns(ref const Block!InSituRegion block) const
 	{
@@ -65,7 +65,7 @@ struct InSituRegion(size_t bufferSize)
 	}
 
 	/++
-	Attempts to deallocate `block`
+	Attempts to deallocate `block`.
 
 	Deallocation only succeeds if `block` is the most recent block allocated
 	by this `InSituRegion`.
