@@ -30,7 +30,7 @@ struct InSituRegion(size_t bufferSize)
 
 	The requested size is rounded up to a multiple of [platformAlignment].
 
-	Fails if this would cause the total amount allocated would exceed
+	Fails if this would cause the total amount allocated to exceed
 	`bufferSize`.
 
 	Params:
