@@ -9,6 +9,10 @@ module pbackus.allocator.block;
 /++
 A block of memory allocated by an `Allocator`.
 
+A `Block` can only be created in `@system` or `@trusted` code. Before allowing
+`@safe` code to access it, your `@trusted` code must ensure that the safety
+invariant described below is upheld.
+
 $(H2 Safety Invariant)
 
 A `Block!Allocator` is a safe value as long as both of the following conditions
