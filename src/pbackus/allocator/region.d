@@ -1,8 +1,20 @@
+/++
+Allocator that draws from a single chunk of memory
+
+License: Boost License 1.0
+Authors: Paul Backus
++/
 module pbackus.allocator.region;
 
 import pbackus.allocator.alignment;
 import pbackus.allocator.block;
 
+/++
+Bump-the-pointer allocator that uses an internal fixed-size buffer
+
+Params:
+	bufferSize = Size of the internal buffer.
++/
 struct InSituRegion(size_t bufferSize)
 {
 	private @system {
@@ -10,8 +22,22 @@ struct InSituRegion(size_t bufferSize)
 		size_t inUse;
 	}
 
+	/// Copying is disabled
 	@disable this(ref inout InSituRegion) inout;
 
+	/++
+	Allocates at least `size` bytes
+
+	The requested size is rounded up to a multiple of [platformAlignment].
+
+	Fails if this would cause the total amount allocated would exceed
+	`bufferSize`.
+
+	Params:
+		size = Bytes to allocate.
+	
+	Returns: The allocated block on success, or a null block on failure.
+	+/
 	@trusted pure nothrow @nogc
 	Block!InSituRegion allocate(size_t size)
 	{
@@ -29,6 +55,7 @@ struct InSituRegion(size_t bufferSize)
 		return move(result);
 	}
 
+	/// True if `block` was allocated by this `InSituRegion`
 	@trusted pure nothrow @nogc
 	bool owns(ref const Block!InSituRegion block) const
 	{
@@ -37,6 +64,18 @@ struct InSituRegion(size_t bufferSize)
 			&& &block.memory[$-1] <= &storage[$-1];
 	}
 
+	/++
+	Attempts to deallocate `block`
+
+	Deallocation only succeeds if `block` is the most recent block allocated
+	by this `InSituRegion`.
+
+	`block` must be owned by this `InSituRegion`. If it is not, the program
+	will be aborted.
+
+	Params:
+		block = The block to deallocate.
+	+/
 	@trusted pure nothrow @nogc
 	void deallocate(ref Block!InSituRegion block)
 	{
