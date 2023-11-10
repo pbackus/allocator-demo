@@ -39,7 +39,7 @@ struct Unique(T, Allocator)
 			return;
 
 		mixin(trusted!"storage").borrow!((void[] mem) {
-			auto ptr = mixin(trusted!q{ cast(RefType!T) mem.ptr });
+			auto ptr = mixin(trusted!q{cast(RefType!T) mem.ptr});
 			static if (is(T == class) || is(T == interface))
 				destroy(ptr);
 			else
