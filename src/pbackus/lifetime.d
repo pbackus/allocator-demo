@@ -1,36 +1,67 @@
+/++
+Safe `emplace` implementation
+
+License: Boost License 1.0
+Authors: Paul Backus
++/
 module pbackus.lifetime;
 
 import pbackus.traits;
 import pbackus.util;
 
+/++
+A block of memory that can be safely initialized
+
+An `UninitializedBlock` can only be created in `@system` or `@trusted` code.
+Before allowing `@safe` code to access it, your `@trusted` code must ensure
+that the safety invariant described below is upheld (for example, by using
+memory that has just been allocated).
+
+Safety_Invariant:
+
+An `UninitializedBlock` is a safe value as long as one of the following is
+true:
+
+$(NUMBERED_LIST
+	* Its `memory` field is `null`.
+	* The block of memory referred to by its `memory` field
+	$(LIST
+		* does not contain any [objects] reachable from `@safe` code, and
+		* is not referred to by any other `UninitializedBlock`.
+	)
+)
+
+Link_References:
+
+objects = https://dlang.org/spec/intro.html#object-model
++/
 struct UninitializedBlock
 {
-	/+
-	Safety invariant: either memory is null, or it refers to a chunk of memory
-	that is uninitialized (i.e., does not contain an [object][1]) and that is
-	not referred to by any other UninitializedBlock.
-
-	[1]: https://dlang.org/spec/intro.html#object-model
-	+/
+	/// A block of uninitialized memory, or `null`
 	@system void[] memory;
 
+	/// Creating an `UninitializedBlock` is `@system`
 	@system pure nothrow @nogc
 	this(void[] memory) { this.memory = memory; }
 
+	/// Copying is disabled
 	@disable this(ref inout UninitializedBlock) inout;
 
+	/// True if `memory` is `null`, otherwise false
 	@safe pure nothrow @nogc
 	bool isNull() const
 	{
 		return this is UninitializedBlock.init;
 	}
 
+	/// Size of `memory` in bytes
 	@trusted pure nothrow @nogc
 	size_t size() const
 	{
 		return memory.length;
 	}
 
+	/// True if `memory` is properly aligned to hold a `T`
 	@trusted pure nothrow @nogc
 	bool isAlignedFor(T)() const
 	{
@@ -180,21 +211,25 @@ version (D_BetterC) {} else
 /++
 Constructs or initializes an instance of `T` in uninitialized memory
 
-Params:
-  block = the memory to use
-  args = initial value or constructor arguments
+The block's size and alignment must be sufficient to accomodate `T`. If they
+are not, initialization will fail.
 
-Returns: a pointer or class reference to the resulting object on success,
+If initialization succeeds, `block` is set to `UninitializedBlock.init` so that
+the same block cannot be used twice.
+
+Params:
+	block = The memory to use
+	args = Initial value or constructor arguments
+
+Returns: A pointer or class reference to the resulting object on success,
 `null` on failure.
 
 Bugs:
 
-Because of [a compiler bug][issue8850], it is not possible for `emplace` to
-call the constructor of a nested `struct`. To work around this limitation, call
-the constructor first and pass the resulting struct instance to `emplace` as
-the initializer.
-
-[issue8850]: https://issues.dlang.org/show_bug.cgi?id=8850
+Because of [a D compiler bug](https://issues.dlang.org/show_bug.cgi?id=8850),
+it is not possible for `emplace` to call the constructor of a nested `struct`
+type. To work around this limitation, call the constructor first and pass the
+resulting struct instance to `emplace` as the initial value.
 +/
 RefType!T emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 {
@@ -717,16 +752,16 @@ version (D_BetterC) {} else
 }
 
 /++
-Initializes a block of memory as an object of type `T`
+Default-initializes an instance of `T` in uninitialized memory
 
 The block's size and alignment must be sufficient to accomodate `T`. If they
 are not, initialization will fail.
 
-If initalization succeeds, `block` will be set to `UninitializedBlock.init`.
-This ensures that the same block of memory cannot be initialized twice.
+If initialization succeeds, `block` is set to `UninitializedBlock.init` so that
+the same block cannot be used twice.
 
 Params:
-  block = the memory to initialize
+	block = The memory to initialize
 
 Returns: a pointer or class reference to the initialized object on success,
 `null` on failure.
