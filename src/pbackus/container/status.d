@@ -1,3 +1,9 @@
+/++
+Status codes
+
+License: Boost License 1.0
+Authors: Paul Backus
++/
 module pbackus.container.status;
 
 import core.attribute: mustuse;
