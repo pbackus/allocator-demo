@@ -38,7 +38,7 @@ $(NUMBERED_LIST
 Because maintenance of this invariant requires cooperation between the
 implementation of `Block` (this module) and the implementation of `Allocator`,
 it is ultimately the responsibility of the programmer to ensure that a given
-`Block` implementation is only used with allocators that are designed for it.
+version of `Block` is only used with allocators that are designed for it.
 
 Any functional change to the requirements in this safety invariant should be
 considered a breaking API change.
