@@ -1,33 +1,67 @@
+/++
+Block type that represents an allocation
+
+License: Boost License 1.0
+Authors: Paul Backus
++/
 module pbackus.allocator.block;
 
+/++
+A block of memory allocated by an `Allocator`
+
+Safety_Invariant:
+
+A `Block!Allocator` is a safe value as long as both of the following conditions
+are upheld.
+
+$(NUMBERED_LIST
+	* One of the following is true:
+	$(LIST
+		* Its `memory` field is `null`.
+		* The block of memory referred to by its `memory` field
+		$(LIST
+			* was last allocated by an instance of `Allocator` and, since then, has
+			  not been deallocated; and
+			* is not reachable from `@safe` code, and
+			* is not referred to by any other pointers or references, except for
+			  those internal to `Allocator`'s implementation (if any).
+		)
+	)
+	* Usage of `Allocator`'s safe interface with safe values cannot cause the
+	  memory of an allocated `Block` to be written to before it is deallocated.
+)
+
+Because maintenance of this invariant requires cooperation between the
+implementation of `Block` (this module) and the implementation of `Allocator`,
+it is ultimately the responsibility of the programmer to ensure that a given
+`Block` implementation is only used with allocators that are designed for it.
+
+Any functional change to the requirements in this safety invariant should be
+considered a breaking API change.
++/
 struct Block(Allocator)
 {
-	/+
-	Safety invariant: one of the following must always be true.
-
-	  1. memory is null
-	  2. memory is a unique reference to a live memory allocation returned from
-	     Allocator.allocate
-	
-	This safety invariant is relied upon by @trusted code in other modules,
-	including both allocators and containers.
-	+/
+	/// A block of allocated memory, or `null`
 	@system void[] memory;
 
+	/// Creating a `Block` is `@system`
 	@system pure nothrow @nogc
 	this(void[] memory)
 	{
 		this.memory = memory;
 	}
 
+	/// Copying is disabled
 	@disable this(ref inout Block) inout;
 
+	/// True if `memory` is `null`, otherwise false
 	@safe pure nothrow @nogc
 	bool isNull() const
 	{
 		return this is Block.init;
 	}
 
+	/// Size of `memory` in bytes
 	@trusted pure nothrow @nogc
 	size_t size() const
 	{
@@ -132,8 +166,27 @@ version (unittest) {
 	size_t _ = block.size;
 }
 
+/++
+Safely access a `Block`'s memory
+
+The memory is passed to `callback` as a `scope void[]`, and `block` is set to
+null for the duration of the borrow.
+
+This function will be inferred as `@safe` if `callback` is `@safe`.
+
+Params:
+	callback = Function to receive the borrowed memory.
++/
 template borrow(alias callback)
 {
+	/++
+	The actual `borrow` function
+
+	Params:
+		block = Block to borrow from.
+
+	Returns: The return value of `callback`.
+	+/
 	auto borrow(Allocator)(ref Block!Allocator block)
 	{
 		import std.algorithm.mutation: swap;
