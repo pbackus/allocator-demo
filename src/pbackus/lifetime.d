@@ -17,7 +17,7 @@ Before allowing `@safe` code to access it, your `@trusted` code must ensure
 that the safety invariant described below is upheld (for example, by using
 memory that has just been allocated).
 
-Safety_Invariant:
+$(H2 Safety Invariant)
 
 An `UninitializedBlock` is a safe value as long as one of the following is
 true:

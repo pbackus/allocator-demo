@@ -9,7 +9,7 @@ module pbackus.allocator.block;
 /++
 A block of memory allocated by an `Allocator`
 
-Safety_Invariant:
+$(H2 Safety Invariant)
 
 A `Block!Allocator` is a safe value as long as both of the following conditions
 are upheld.
