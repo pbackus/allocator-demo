@@ -1,3 +1,9 @@
+/++
+Templates for introspection
+
+License: Boost License 1.0
+Authors: Paul Backus
++/
 module pbackus.traits;
 
 /// Amount of memory needed to hold an instance of `T`
