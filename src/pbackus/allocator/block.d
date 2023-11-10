@@ -27,8 +27,12 @@ $(NUMBERED_LIST
 			  those internal to `Allocator`'s implementation (if any).
 		)
 	)
-	* Usage of `Allocator`'s safe interface with safe values cannot cause the
-	  memory of an allocated `Block` to be written to before it is deallocated.
+	* Usage of `Allocator`'s safe interface with safe values cannot do any of
+	  the following:
+	$(LIST
+		* Cause the memory of an allocated `Block` to be written to.
+		* Cause the memory of an allocated `Block` to become inaccessible.
+	)
 )
 
 Because maintenance of this invariant requires cooperation between the
