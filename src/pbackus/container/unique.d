@@ -138,3 +138,34 @@ version (unittest) {
 		assert(Probe.destroyed == true);
 	}
 }
+
+/++
+Creates a `Unique` reference to a `T` value allocated with `allocator`.
+
+If memory allocation or construction of the value fails, an empty `Unique!(T,
+Allocator)` is returned.
+
+If construction of the value fails, `makeUnique` will attempt to deallocate the
+allocated memory. If deallocation fails, the memory will be leaked. To avoid
+this, construct a `T` value first, then pass it to `makeUnique` as the initial
+value.
+
+Params:
+	allocator = The allocator to use.
+	args = Initial value or constructor arguments.
+
+Returns: a `Unique!(T, Allocator)` that holds the allocated `T` value on
+success, or an empty `Unique!(T, Allocator)` on failure.
++/
+Unique!(T, Allocator)
+makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
+{
+	return typeof(return).init;
+}
+
+// Allocation failure
+@safe unittest
+{
+	auto u = AllocatorStub().makeUnique!int(123);
+	assert(u.empty);
+}
