@@ -32,16 +32,11 @@ struct Unique(T, Allocator)
 	+/
 
 	private @system Block!Allocator storage;
+	private @system Allocator allocator;
 
-	static if (hasMember!(Allocator, "instance")) {
-		alias allocator = Allocator.instance;
-	} else {
-		private @system Allocator allocator;
-	}
-
-	@system this(Block!Allocator storage, Allocator allocator)
+	/// Creates a `Unique` using a given allocator instance
+	this(Allocator allocator)
 	{
-		this.storage = move(storage);
 		this.allocator = allocator;
 	}
 
@@ -96,10 +91,9 @@ version (unittest) {
 @system unittest
 {
 	static int n;
-	auto block = Block!AllocatorStub(cast(void[]) (&n)[0 .. 1]);
 
-	auto u1 = Unique!(int, AllocatorStub).init;
-	auto u2 = Unique!(int, AllocatorStub)(move(block), AllocatorStub());
+	Unique!(int, AllocatorStub) u1, u2;
+	u2.storage = Block!AllocatorStub(cast(void[]) (&n)[0 .. 1]);
 
 	() @safe pure nothrow @nogc {
 		assert(u1.empty);
@@ -119,23 +113,26 @@ version (unittest) {
 	static Probe probe;
 
 	{
-		auto block = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
-		auto u = Unique!(Probe, AllocatorStub)(move(block), AllocatorStub());
+		Unique!(Probe, AllocatorStub) u;
+		u.storage = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
+
 		Probe.destroyed = false;
 	}
 	assert(Probe.destroyed == true);
 
 	{
-		auto block = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
-		auto u = Unique!(Probe, AllocatorStub)(move(block), AllocatorStub());
+		Unique!(Probe, AllocatorStub) u;
+		u.storage = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
+
 		Probe.destroyed = false;
 		() @safe { destroy(u); }();
 		assert(Probe.destroyed == true);
 	}
 
 	{
-		auto block = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
-		auto u = Unique!(Probe, AllocatorStub)(move(block), AllocatorStub());
+		Unique!(Probe, AllocatorStub) u;
+		u.storage = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
+
 		Probe.destroyed = false;
 		() @safe { u.destroyValue; }();
 		assert(Probe.destroyed == true);
