@@ -85,6 +85,19 @@ struct UninitializedBlock
 
 		return (cast(uintptr_t) memory.ptr) % alignment == 0;
 	}
+
+	/++
+	Splits an `UninitializedBlock` in two.
+
+	The first `i` bytes of memory are removed from this block and returned as a
+	new `UninitializedBlock`.
+	+/
+	@trusted pure nothrow @nogc
+	UninitializedBlock splitAt(size_t i)
+	{
+		scope(exit) memory = memory[i .. $];
+		return UninitializedBlock(memory[0 .. i]);
+	}
 }
 
 // Can't access an UninitializedBlock's memory in @safe code
@@ -195,6 +208,19 @@ struct UninitializedBlock
 		assert(b1.isAlignedFor!S);
 		assert(!b2.isAlignedFor!S);
 	}
+}
+
+// splitAt
+@system unittest
+{
+	static void[16] buf;
+	UninitializedBlock b1 = buf[];
+
+	() @safe {
+		auto b2 = b1.splitAt(12);
+		assert(b1.size == 4);
+		assert(b2.size == 12);
+	}();
 }
 
 // Alignment for classes
