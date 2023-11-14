@@ -12,12 +12,19 @@ import pbackus.util;
 /++
 A block of memory that can be safely initialized.
 
+An `UninitializedBlock` represents unique, exclusive ownership of a region of
+uninitialized memory. Typically, they are created from memory that has just
+been allocated, and consumed by [emplace] or [emplaceInitializer].
+
+The `.init` value of an `UninitializedBlock` does not own any memory, and is
+called a "null block." To check whether an `UninitializedBlock` is null, use
+the [isNull] method.
+
 An `UninitializedBlock` can only be created in `@system` or `@trusted` code.
 Before allowing `@safe` code to access it, your `@trusted` code must ensure
-that the safety invariant described below is upheld (for example, by using
-memory that has just been allocated).
+that the [#safety-invariant|safety invariant] described below is upheld.
 
-$(H2 Safety Invariant)
+Safety_Invariant:
 
 An `UninitializedBlock` is a safe value as long as one of the following is
 true:
@@ -26,7 +33,10 @@ $(NUMBERED_LIST
 	* Its `memory` field is `null`.
 	* The block of memory referred to by its `memory` field
 	$(LIST
-		* does not contain any [objects] reachable from `@safe` code, and
+		* contains no [objects] that have not reached the end of their
+		  lifetime, and
+		* cannot be reached from `@safe` code, either directly or through the
+		  use of [safe_interfaces]; and
 		* is not referred to by any other `UninitializedBlock`.
 	)
 )
@@ -34,6 +44,7 @@ $(NUMBERED_LIST
 Link_References:
 
 objects = https://dlang.org/spec/intro.html#object-model
+safe_interfaces = [https://dlang.org/spec/function.html#safe-interfaces|safe interfaces]
 +/
 struct UninitializedBlock
 {

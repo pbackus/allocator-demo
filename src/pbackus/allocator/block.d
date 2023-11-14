@@ -9,11 +9,19 @@ module pbackus.allocator.block;
 /++
 A block of memory allocated by an `Allocator`.
 
-A `Block` can only be created in `@system` or `@trusted` code. Before allowing
-`@safe` code to access it, your `@trusted` code must ensure that the safety
-invariant described below is upheld.
+A `Block` represents unique, exclusive ownership of a region of memory
+allocated by an allocator. Typically, they are created by an allocator's
+`allocate` method, and consumed by its `deallocate` method.
 
-$(H2 Safety Invariant)
+The `.init` value of a `Block` type does not own any memory, and is called a
+"null block." To check whether a `Block` is a null block, use the [isNull]
+method.
+
+A `Block` can only be created in `@system` or `@trusted` code. Before allowing
+`@safe` code to access it, your `@trusted` code must ensure that the
+[#safety-invariant|safety invariant] described below is upheld.
+
+Safety_Invariant:
 
 A `Block!Allocator` is a safe value as long as both of the following conditions
 are upheld.
@@ -22,20 +30,20 @@ $(NUMBERED_LIST
 	* One of the following is true:
 	$(LIST
 		* Its `memory` field is `null`.
-		* The block of memory referred to by its `memory` field
+		* The memory referred to by its `memory` field
 		$(LIST
-			* was last allocated by an instance of `Allocator` and, since then, has
-			  not been deallocated; and
-			* is not reachable from `@safe` code, and
-			* is not referred to by any other pointers or references, except for
-			  those internal to `Allocator`'s implementation (if any).
+			* was last allocated by an instance of `Allocator` and, since then,
+			  has not been deallocated; and
+			* cannot be reached from `@safe` code, either directly or through
+			  the use of [safe_interfaces]; and
+			* is not referred to by any other `Block!Allocator`.
 		)
 	)
-	* Usage of `Allocator`'s safe interface with safe values cannot do any of
-	  the following:
+	* As long as the memory referred to by its `memory` field remains
+	  allocated, the use of [safe_interfaces] cannot
 	$(LIST
-		* Cause the memory of an allocated `Block` to be written to.
-		* Cause the memory of an allocated `Block` to become inaccessible.
+		* cause any part of that memory to be written to, or
+		* cause any part of that memory to become inaccessible.
 	)
 )
 
@@ -46,6 +54,10 @@ version of `Block` is only used with allocators that are designed for it.
 
 Any functional change to the requirements in this safety invariant should be
 considered a breaking API change.
+
+Link_References:
+
+safe_interfaces = [https://dlang.org/spec/function.html#safe-interfaces|safe interfaces]
 +/
 struct Block(Allocator)
 {
