@@ -13,9 +13,9 @@ A `Block` represents unique, exclusive ownership of a region of memory
 allocated by an allocator. Typically, they are created by an allocator's
 `allocate` method, and consumed by its `deallocate` method.
 
-The `.init` value of a `Block` type does not own any memory, and is called a
-"null block." To check whether a `Block` is a null block, use the [isNull]
-method.
+A `Block` that does not own any memory is called a "null block." `Block.init`
+is guaranteed to be a null block. To check whether a `Block` is a null block,
+use the [isNull] method.
 
 A `Block` can only be created in `@system` or `@trusted` code. Before allowing
 `@safe` code to access it, your `@trusted` code must ensure that the
@@ -78,7 +78,7 @@ struct Block(Allocator)
 	@safe pure nothrow @nogc
 	bool isNull() const
 	{
-		return this is Block.init;
+		return size == 0;
 	}
 
 	/// Size of `memory` in bytes.
@@ -184,6 +184,15 @@ version (unittest) {
 {
 	TestBlock block;
 	size_t _ = block.size;
+}
+
+// All empty Blocks are null
+@system unittest
+{
+	static void[1] buf;
+	TestBlock block = buf[0 .. 0];
+
+	assert(block.isNull);
 }
 
 /++
