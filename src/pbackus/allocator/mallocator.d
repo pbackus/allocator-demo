@@ -11,9 +11,6 @@ import pbackus.allocator.block;
 /// The standard C heap allocator.
 struct Mallocator
 {
-	/// Global instance.
-	static shared Mallocator instance;
-
 	/++
 	Allocates `size` bytes with `malloc`.
 
@@ -23,7 +20,7 @@ struct Mallocator
 	Returns: The allocated block on success, or a null block on failure.
 	+/
 	@trusted pure nothrow @nogc
-	Block!Mallocator allocate(size_t size) const shared
+	Block!Mallocator allocate(size_t size) const
 	{
 		import core.memory: pureMalloc;
 
@@ -42,14 +39,14 @@ struct Mallocator
 	unsafe `Block` from `@system` code.
 	+/
 	@safe pure nothrow @nogc
-	bool owns(ref const Block!Mallocator block) const shared
+	bool owns(ref const Block!Mallocator block) const
 	{
 		return !block.isNull;
 	}
 
 	/// Deallocates `block` with `free`.
 	@trusted pure nothrow @nogc
-	void deallocate(ref Block!Mallocator block) const shared
+	void deallocate(ref Block!Mallocator block) const
 	{
 		import core.memory: pureFree;
 
@@ -64,8 +61,8 @@ struct Mallocator
 // Allocates blocks of the correct size
 @safe unittest
 {
-	auto block = Mallocator.instance.allocate(32);
-	scope(exit) Mallocator.instance.deallocate(block);
+	auto block = Mallocator().allocate(32);
+	scope(exit) Mallocator().deallocate(block);
 	assert(!block.isNull);
 	assert(block.size >= 32);
 }
@@ -73,7 +70,7 @@ struct Mallocator
 // owns
 @safe unittest
 {
-	alias alloc = Mallocator.instance;
+	auto alloc = Mallocator();
 	auto b1 = alloc.allocate(32);
 	scope(exit) alloc.deallocate(b1);
 	Block!Mallocator b2;
@@ -85,7 +82,7 @@ struct Mallocator
 // deallocate
 @safe unittest
 {
-	auto block = Mallocator.instance.allocate(32);
-	Mallocator.instance.deallocate(block);
+	auto block = Mallocator().allocate(32);
+	Mallocator().deallocate(block);
 	assert(block.isNull);
 }
