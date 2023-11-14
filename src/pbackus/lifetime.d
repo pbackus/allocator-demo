@@ -16,9 +16,9 @@ An `UninitializedBlock` represents unique, exclusive ownership of a region of
 uninitialized memory. Typically, they are created from memory that has just
 been allocated, and consumed by [emplace] or [emplaceInitializer].
 
-The `.init` value of an `UninitializedBlock` does not own any memory, and is
-called a "null block." To check whether an `UninitializedBlock` is null, use
-the [isNull] method.
+An `UninitializedBlock` that does not own any memory is called a "null block."
+`UninitializedBlock.init` is guaranteed to be a null block. To check whether an
+`UninitializedBlock` is a null block, use the [isNull] method.
 
 An `UninitializedBlock` can only be created in `@system` or `@trusted` code.
 Before allowing `@safe` code to access it, your `@trusted` code must ensure
@@ -58,11 +58,11 @@ struct UninitializedBlock
 	/// Copying is disabled
 	@disable this(ref inout UninitializedBlock) inout;
 
-	/// True if `memory` is `null`, otherwise false.
+	/// True if this `UninitializedBlock` owns no memory, otherwise false
 	@safe pure nothrow @nogc
 	bool isNull() const
 	{
-		return this is UninitializedBlock.init;
+		return size == 0;
 	}
 
 	/// Size of `memory` in bytes.
@@ -220,6 +220,20 @@ struct UninitializedBlock
 		auto b2 = b1.splitAt(12);
 		assert(b1.size == 4);
 		assert(b2.size == 12);
+	}();
+}
+
+// Edge cases of splitAt
+@system unittest
+{
+	static void[16] buf;
+	UninitializedBlock b1 = buf[];
+
+	() @safe {
+		auto b2 = b1.splitAt(0);
+		assert(b2.isNull);
+		auto b3 = b1.splitAt(b1.size);
+		assert(b1.isNull);
 	}();
 }
 
