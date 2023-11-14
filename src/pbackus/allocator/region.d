@@ -110,36 +110,35 @@ extern(C++) final class InSituRegion(size_t bufferSize)
 	}
 }
 
+version(D_BetterC)
 // "scope new" doesn't work in BetterC
-version(D_BetterC) {
-	// Simplified test so we have some coverage in BetterC
-	@system nothrow @nogc
-	unittest
-	{
-		import pbackus.lifetime;
-		import pbackus.util;
+// Simplified test so we still have some coverage
+@system nothrow @nogc
+unittest
+{
+	import pbackus.lifetime;
+	import pbackus.util;
 
-		enum size = __traits(classInstanceSize, InSituRegion!128);
-		enum alignment = __traits(classInstanceAlignment, InSituRegion!128);
-		align(alignment) void[size] rawMem = void;
+	enum size = __traits(classInstanceSize, InSituRegion!128);
+	enum alignment = __traits(classInstanceAlignment, InSituRegion!128);
+	align(alignment) void[size] rawMem = void;
 
-		auto ublock = mixin(trusted!"UninitializedBlock(rawMem[])");
-		auto buf = emplace!(InSituRegion!128)(ublock);
-		assert(buf !is null);
+	auto ublock = mixin(trusted!"UninitializedBlock(rawMem[])");
+	auto buf = emplace!(InSituRegion!128)(ublock);
+	assert(buf !is null);
 
-		() @safe {
-			auto block = buf.allocate(32);
-			assert(!block.isNull);
-			assert(block.size >= 32);
-			assert(buf.owns(block));
-			buf.deallocate(block);
-			assert(block.isNull);
-		}();
-	}
+	() @safe {
+		auto block = buf.allocate(32);
+		assert(!block.isNull);
+		assert(block.size >= 32);
+		assert(buf.owns(block));
+		buf.deallocate(block);
+		assert(block.isNull);
+	}();
 }
-else:
 
 // Allocates blocks of the correct size
+version (D_BetterC) {} else
 @safe unittest
 {
 	scope buf = new InSituRegion!128;
@@ -149,6 +148,7 @@ else:
 }
 
 // Can't over-allocate
+version (D_BetterC) {} else
 @safe unittest
 {
 	scope buf = new InSituRegion!128;
@@ -157,6 +157,7 @@ else:
 }
 
 // Can't allocate when full
+version (D_BetterC) {} else
 @safe unittest
 {
 	scope buf = new InSituRegion!128;
@@ -167,6 +168,7 @@ else:
 }
 
 // owns
+version (D_BetterC) {} else
 @safe unittest
 {
 	scope buf1 = new InSituRegion!128;
@@ -185,6 +187,7 @@ else:
 }
 
 // Can deallocate an allocated block
+version (D_BetterC) {} else
 @safe unittest
 {
 	scope buf = new InSituRegion!128;
@@ -194,6 +197,7 @@ else:
 }
 
 // Deallocated space can be allocated again
+version (D_BetterC) {} else
 @safe unittest
 {
 	scope buf = new InSituRegion!128;
@@ -204,6 +208,7 @@ else:
 }
 
 // Can only deallocate the most recently allocated block
+version (D_BetterC) {} else
 @safe unittest
 {
 	scope buf = new InSituRegion!128;
