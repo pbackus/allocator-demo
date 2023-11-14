@@ -75,9 +75,7 @@ extern(C++) final class InSituRegion(size_t bufferSize)
 	@trusted pure nothrow @nogc
 	bool owns(ref scope const Block!InSituRegion block) scope const
 	{
-		return !block.isNull
-			&& &block.memory[0] >= &storage[0]
-			&& &block.memory[$-1] <= &storage[$-1];
+		return !block.isNull && storage[].contains(block.memory);
 	}
 
 	/++
@@ -223,4 +221,36 @@ version (D_BetterC) {} else
 	// should succeed
 	buf.deallocate(b1);
 	assert(b1.isNull);
+}
+
+/++
+Safely checks if one chunk of memory contains another.
+
+See <https://devblogs.microsoft.com/oldnewthing/20170927-00/?p=97095>
++/
+@safe pure nothrow @nogc
+private bool contains(const void[] haystack, const void[] needle)
+{
+	import core.stdc.stdint: uintptr_t;
+
+	auto haystackStart = cast(uintptr_t) &haystack[0];
+	auto haystackEnd = cast(uintptr_t) &haystack[$-1];
+	auto needleStart= cast(uintptr_t) &needle[0];
+	auto needleEnd= cast(uintptr_t) &needle[$-1];
+
+	return needleStart >= haystackStart && needleEnd <= haystackEnd;
+}
+
+@safe unittest
+{
+	int[5] a = [1, 2, 3, 4, 5];
+	int[] s1 = a[0 .. 3];
+	int[] s2 = a[2 .. 5];
+
+	assert(a[].contains(s1));
+	assert(a[].contains(s2));
+	assert(!s1.contains(a[]));
+	assert(!s2.contains(a[]));
+	assert(!s1.contains(s2));
+	assert(!s2.contains(s1));
 }
