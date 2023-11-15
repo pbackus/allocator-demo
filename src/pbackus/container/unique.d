@@ -57,15 +57,15 @@ struct Unique(T, Allocator)
 			return this_.storage;
 		}
 
-		getStorage(this).borrow!((scope void[] mem) {
+		getStorage(this).borrow!((scope void[] memory) {
 			// Use static nested function for correct scope inference
 			// https://issues.dlang.org/show_bug.cgi?id=22977
-			@trusted static auto getPtr(ref void[] mem)
+			@trusted static auto getPtr(ref void[] memory)
 			{
-				return cast(RefType!T) mem.ptr;
+				return cast(RefType!T) memory.ptr;
 			}
 
-			auto ptr = getPtr(mem);
+			auto ptr = getPtr(memory);
 			static if (is(T == class) || is(T == interface))
 				destroy(ptr);
 			else
