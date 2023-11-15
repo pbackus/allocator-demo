@@ -24,14 +24,14 @@ instance](https://dlang.org/spec/attribute.html#scope-class-var) (when the D
 runtime is available) or manual emplacement into a stack buffer (in BetterC).
 
 Params:
-	bufferSize = Size of the internal buffer.
+	capacity = Size of the internal buffer.
 +/
-extern(C++) final class InSituRegion(size_t bufferSize)
+extern(C++) final class InSituRegion(size_t capacity)
 {
 	extern(D):
 
 	private @system {
-		align(platformAlignment) void[bufferSize] storage;
+		align(platformAlignment) void[capacity] storage;
 		size_t inUse;
 	}
 
@@ -47,7 +47,7 @@ extern(C++) final class InSituRegion(size_t bufferSize)
 	The requested size is rounded up to a multiple of [platformAlignment].
 
 	Fails if this would cause the total amount allocated to exceed
-	`bufferSize`.
+	`capacity`.
 
 	Params:
 		size = Bytes to allocate.
@@ -63,7 +63,7 @@ extern(C++) final class InSituRegion(size_t bufferSize)
 			return Block!InSituRegion.init;
 
 		size_t roundedSize = roundToAligned(size);
-		if (roundedSize > bufferSize - inUse)
+		if (roundedSize > capacity - inUse)
 			return Block!InSituRegion.init;
 
 		Block!InSituRegion result = storage[inUse .. inUse + roundedSize];
