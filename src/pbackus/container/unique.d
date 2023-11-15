@@ -166,16 +166,21 @@ makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
 	auto block = mixin(trusted!"result.allocator").allocate(storageSize!T);
 
 	if (!block.isNull) {
-		bool initialized = block.borrow!((void[] memory) {
-			auto ublock = mixin(trusted!q{UninitializedBlock(memory)});
+		bool initialized;
+
+		scope(exit) {
+			if (initialized)
+				() @trusted { result.storage = move(block); }();
+			else
+				mixin(trusted!"result.allocator").deallocate(block);
+		}
+
+		initialized = block.borrow!((scope void[] memory) {
+			scope ublock = mixin(trusted!q{UninitializedBlock(memory)});
 			auto ptr = ublock.emplace!T(forward!args);
 			return ptr !is null;
 		});
 
-		if (initialized)
-			() @trusted { result.storage = move(block); }();
-		else
-			mixin(trusted!"result.allocator").deallocate(block);
 	}
 
 	return result;
@@ -195,4 +200,38 @@ makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
 
 	auto u = Mallocator().makeUnique!int(123);
 	assert(!u.empty);
+}
+
+// Construction failure frees memory
+version (D_BetterC) {} else
+@safe unittest
+{
+	static struct ThrowsInCtor
+	{
+		this(int n) @safe { throw new Exception("oops"); }
+	}
+
+	static struct AllocCounter
+	{
+		static size_t count;
+
+		@trusted nothrow
+		Block!AllocCounter allocate(size_t size)
+		{
+			count++;
+			return typeof(return)(new void[](size));
+		}
+
+		@safe nothrow
+		void deallocate(ref Block!AllocCounter block)
+		{
+			count--;
+			block = typeof(block).init;
+		}
+	}
+
+	try
+		auto u = AllocCounter().makeUnique!ThrowsInCtor(123);
+	catch (Exception e)
+		assert(AllocCounter.count == 0);
 }

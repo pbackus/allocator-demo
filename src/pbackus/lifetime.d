@@ -53,21 +53,21 @@ struct UninitializedBlock
 
 	/// Creating an `UninitializedBlock` is `@system`.
 	@system pure nothrow @nogc
-	this(void[] memory) { this.memory = memory; }
+	this(return scope void[] memory) { this.memory = memory; }
 
 	/// Copying is disabled
 	@disable this(ref inout UninitializedBlock) inout;
 
 	/// True if this `UninitializedBlock` owns no memory, otherwise false
 	@safe pure nothrow @nogc
-	bool isNull() const
+	bool isNull() scope const
 	{
 		return size == 0;
 	}
 
 	/// Size of `memory` in bytes.
 	@trusted pure nothrow @nogc
-	size_t size() const
+	size_t size() scope const
 	{
 		return memory.length;
 	}
@@ -93,7 +93,7 @@ struct UninitializedBlock
 	new `UninitializedBlock`.
 	+/
 	@trusted pure nothrow @nogc
-	UninitializedBlock splitAt(size_t i)
+	UninitializedBlock splitAt(size_t i) return scope
 	{
 		scope(exit) memory = memory[i .. $];
 		return UninitializedBlock(memory[0 .. i]);
