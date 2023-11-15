@@ -280,6 +280,10 @@ Because of [a D compiler bug](https://issues.dlang.org/show_bug.cgi?id=8850),
 it is not possible for `emplace` to call the constructor of a nested `struct`
 type. To work around this limitation, call the constructor first and pass the
 resulting struct instance to `emplace` as the initial value.
+
+The `block` parameter does not need to be `return scope` for all instantiations.
+However, if it is not marked as `return scope` explicitly, the compiler is
+unable to infer `return scope` for the instantiations that require it.
 +/
 RefType!T emplace(T, Args...)(ref return scope UninitializedBlock block, auto ref Args args)
 {
