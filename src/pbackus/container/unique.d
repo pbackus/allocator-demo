@@ -175,8 +175,8 @@ makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
 				mixin(trusted!"result.allocator").deallocate(block);
 		}
 
-		initialized = block.borrow!((scope void[] memory) {
-			scope ublock = mixin(trusted!q{UninitializedBlock(memory)});
+		initialized = block.borrow!((void[] memory) {
+			auto ublock = mixin(trusted!q{UninitializedBlock(memory)});
 			auto ptr = ublock.emplace!T(forward!args);
 			return ptr !is null;
 		});
