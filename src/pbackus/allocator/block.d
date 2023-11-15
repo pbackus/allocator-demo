@@ -237,9 +237,25 @@ template borrow(alias callback)
 
 		Therefore, this function cannot violate the block's safety invariant.
 		+/
+
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static
+		void swapMemory(ref Block!Allocator block, ref void[] borrowedMemory)
+		{
+			import pbackus.util: assumeNonScope;
+
+			// Ok to cast away scope here because the only values this will be
+			// called with are (a) the original value of block.memory and
+			// (b) null, both of which are safe to store in either variable.
+			void[] tmp = block.memory;
+			block.memory = assumeNonScope(borrowedMemory);
+			borrowedMemory = tmp;
+		}
+
 		scope void[] borrowedMemory = null;
-		() @trusted { swap(block.memory, borrowedMemory); }();
-		scope(exit) () @trusted { swap(block.memory, borrowedMemory); }();
+		swapMemory(block, borrowedMemory);
+		scope(exit) swapMemory(block, borrowedMemory);
 		return callback(borrowedMemory[]);
 	}
 }

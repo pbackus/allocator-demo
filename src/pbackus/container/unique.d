@@ -13,6 +13,7 @@ import pbackus.util;
 
 import core.lifetime: move, forward;
 import std.traits: hasMember;
+import std.typecons: nullable, Nullable;
 
 /++
 A unique, owning reference to an instance of `T`.
@@ -49,8 +50,22 @@ struct Unique(T, Allocator)
 		if (empty)
 			return;
 
-		mixin(trusted!"storage").borrow!((void[] mem) {
-			auto ptr = mixin(trusted!q{cast(RefType!T) mem.ptr});
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static ref getStorage(ref Unique this_)
+		{
+			return this_.storage;
+		}
+
+		getStorage(this).borrow!((scope void[] mem) {
+			// Use static nested function for correct scope inference
+			// https://issues.dlang.org/show_bug.cgi?id=22977
+			@trusted static auto getPtr(ref void[] mem)
+			{
+				return cast(RefType!T) mem.ptr;
+			}
+
+			auto ptr = getPtr(mem);
 			static if (is(T == class) || is(T == interface))
 				destroy(ptr);
 			else
@@ -68,8 +83,22 @@ struct Unique(T, Allocator)
 		if (empty)
 			return;
 
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static ref getAllocator(ref Unique this_)
+		{
+			return this_.allocator;
+		}
+
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static ref getStorage(ref Unique this_)
+		{
+			return this_.storage;
+		}
+
 		destroyValue;
-		mixin(trusted!"allocator").deallocate(mixin(trusted!"storage"));
+		getAllocator(this).deallocate(getStorage(this));
 	}
 
 	/// True if this `Unique` has no value.
@@ -109,7 +138,7 @@ version (unittest) {
 	struct Probe
 	{
 		static bool destroyed;
-		~this()  @safe { destroyed = true; }
+		~this() scope @safe { destroyed = true; }
 	}
 
 	static Probe probe;
@@ -162,21 +191,43 @@ success, or an empty `Unique!(T, Allocator)` on failure.
 Unique!(T, Allocator)
 makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
 {
+	// Use static nested function for correct scope inference
+	// https://issues.dlang.org/show_bug.cgi?id=22977
+	@trusted static ref getAllocator(ref Unique!(T, Allocator) result)
+	{
+		return result.allocator;
+	}
+
 	auto result = Unique!(T, Allocator)(allocator);
-	auto block = mixin(trusted!"result.allocator").allocate(storageSize!T);
+	auto block = getAllocator(result).allocate(storageSize!T);
 
 	if (!block.isNull) {
 		bool initialized;
 
 		scope(exit) {
+			// Use static nested function for correct scope inference
+			// https://issues.dlang.org/show_bug.cgi?id=22977
+			@trusted static
+			void commitStorage(ref Unique!(T, Allocator) result, ref Block!Allocator block)
+			{
+				result.storage = move(block);
+			}
+
 			if (initialized)
-				() @trusted { result.storage = move(block); }();
+				commitStorage(result, block);
 			else
-				mixin(trusted!"result.allocator").deallocate(block);
+				getAllocator(result).deallocate(block);
 		}
 
-		initialized = block.borrow!((void[] memory) {
-			auto ublock = mixin(trusted!q{UninitializedBlock(memory)});
+		initialized = block.borrow!((scope void[] memory) {
+			// Use static nested function for correct scope inference
+			// https://issues.dlang.org/show_bug.cgi?id=22977
+			@trusted static auto toUblock(ref void[] memory)
+			{
+				return UninitializedBlock(memory);
+			}
+
+			auto ublock = toUblock(memory);
 			auto ptr = ublock.emplace!T(forward!args);
 			return ptr !is null;
 		});

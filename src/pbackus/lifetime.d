@@ -7,7 +7,6 @@ Authors: Paul Backus
 module pbackus.lifetime;
 
 import pbackus.traits;
-import pbackus.util;
 
 /++
 A block of memory that can be safely initialized.
@@ -282,7 +281,7 @@ it is not possible for `emplace` to call the constructor of a nested `struct`
 type. To work around this limitation, call the constructor first and pass the
 resulting struct instance to `emplace` as the initial value.
 +/
-RefType!T emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
+RefType!T emplace(T, Args...)(ref return scope UninitializedBlock block, auto ref Args args)
 {
 	import core.lifetime: forward;
 
@@ -307,8 +306,28 @@ RefType!T emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 			Leave block uninitialized if constructor throws
 			@trusted ok because the aliasing is never exposed to @safe code
 			+/
-			void[] savedMemory = mixin(trusted!"block.memory");
-			scope(failure) () @trusted { block.memory = savedMemory; }();
+
+			import pbackus.util: assumeNonScope;
+
+			// Use static nested function for correct scope inference
+			// https://issues.dlang.org/show_bug.cgi?id=22977
+			@trusted static void[] saveMemory(ref UninitializedBlock block)
+			{
+				return block.memory;
+			}
+
+			// Use static nested function for correct scope inference
+			// https://issues.dlang.org/show_bug.cgi?id=22977
+			@trusted static
+			void restoreMemory(ref UninitializedBlock block, ref void[] savedMemory)
+			{
+				// Ok to bypass scope becasue we know that savedMemory is a
+				// copy of block.memory.
+				block.memory = assumeNonScope(savedMemory);
+			}
+
+			void[] savedMemory = saveMemory(block);
+			scope(failure) restoreMemory(block, savedMemory);
 		}
 
 		static if (is(T == class)) {
@@ -330,17 +349,31 @@ RefType!T emplace(T, Args...)(ref UninitializedBlock block, auto ref Args args)
 				if (unqualResult) {
 					// Force implicit conversion
 					Outer outerArg = forward!(args[0]);
+
 					/+
 					@trusted ok because Outer and Unqual!Outer have identical
 					representation, and unsafe aliasing will not be exposed
 					+/
-					() @trusted {
+					// Use static nested function for correct scope inference
+					// https://issues.dlang.org/show_bug.cgi?id=22977
+					@trusted static
+					void setOuter(ref Unqual!T unqualResult, ref Outer outerArg)
+					{
 						unqualResult.outer = *cast(Unqual!Outer*) &outerArg;
-					}();
+					}
+
+					setOuter(unqualResult, outerArg);
 				}
 
 				// @trusted ok because the aliasing is never exposed to @safe code
-				T result = (() @trusted => cast(T) unqualResult)();
+				// Use static nested function for correct scope inference
+				// https://issues.dlang.org/show_bug.cgi?id=22977
+				@trusted static T toQualified(ref Unqual!T unqualResult)
+				{
+					return cast(T) unqualResult;
+				}
+
+				T result = toQualified(unqualResult);
 				alias ctorArgs = args[1 .. $];
 			} else {
 				T result = block.emplaceInitializer!T;
@@ -411,7 +444,7 @@ version (D_BetterC) {} else
 	static class C
 	{
 		int n;
-		this(int n) @safe { this.n = n; }
+		this(int n) scope @safe { this.n = n; }
 	}
 
 	enum size = __traits(classInstanceSize, C);
@@ -433,7 +466,7 @@ version (D_BetterC) {} else
 	static class C
 	{
 		int n;
-		this(int n) @safe { throw new Exception("oops"); }
+		this(int n) scope @safe { throw new Exception("oops"); }
 	}
 
 	enum size = __traits(classInstanceSize, C);
@@ -462,19 +495,19 @@ version (D_BetterC) {} else
 		class Inner
 		{
 			int m;
-			this(int m) @safe { this.m = m; }
-			this(int m) immutable @safe { this.m = m; }
+			this(int m) scope @safe { this.m = m; }
+			this(int m) scope immutable @safe { this.m = m; }
 			int fun() const @safe { return n; }
 		}
 		class Inner2
 		{
 			int m;
-			int fun() @safe { return n; }
+			int fun() scope @safe { return n; }
 		}
 		class Inner3
 		{
 			int m;
-			this() @safe { this.m = 456; }
+			this() scope @safe { this.m = 456; }
 			int fun() @safe { return n; }
 		}
 	}
@@ -537,13 +570,13 @@ version (D_BetterC) {} else
 	static class Outer
 	{
 		int n;
-		this(int n) immutable @safe { this.n = n; }
+		this(int n) scope immutable @safe { this.n = n; }
 		auto opCast(T)() const { return cast(T) null; }
 
 		class Inner
 		{
 			int m;
-			this(int m) immutable @safe { this.m = m; }
+			this(int m) scope immutable @safe { this.m = m; }
 			int fun() const @safe { return n; }
 		}
 	}
@@ -567,13 +600,13 @@ version (D_BetterC) {} else
 	static class Outer
 	{
 		int n;
-		this(int n) immutable @safe { this.n = n; }
+		this(int n) scope immutable @safe { this.n = n; }
 		auto opCast(T)() const { return cast(T) null; }
 
 		class Inner
 		{
 			int m;
-			this(int m) immutable @safe { this.m = m; }
+			this(int m) scope immutable @safe { this.m = m; }
 			int fun() const @safe { return n; }
 		}
 	}
@@ -841,10 +874,16 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		Since classes are reference types, initialize the instance that T
 		points to rather than T itself.
 		+/
-		return () @trusted {
+
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static T initClass(ref UninitializedBlock block)
+		{
 			block.memory[0 .. size] = __traits(initSymbol, T)[];
 			return cast(T) block.memory.ptr;
-		}();
+		}
+
+		return initClass(block);
 	} else static if (__traits(isZeroInit, T)) {
 		/+
 		Zero-initialized value types
@@ -852,10 +891,16 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		Handling these all at once here is simpler and more efficient than
 		doing it individually in each branch.
 		+/
-		return () @trusted {
+
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static T* zeroInit(ref UninitializedBlock block)
+		{
 			block.memory[0 .. size] = (void[size]).init;
 			return cast(T*) block.memory.ptr;
-		}();
+		}
+
+		return zeroInit(block);
 	} else static if (is(T == struct) || is(T == union)) {
 		/+
 		Structs and unions
@@ -863,11 +908,17 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		Might have overloaded assignment, so initalize with an untyped byte
 		copy instead of assigning T.init.
 		+/
-		return () @trusted {
+
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static T* initStruct(ref UninitializedBlock block)
+		{
 			// isZeroInit case is handled earlier, so initSymbol won't be null
 			block.memory[0 .. size] = __traits(initSymbol, T)[];
 			return cast(T*) block.memory.ptr;
-		}();
+		}
+
+		return initStruct(block);
 	} else static if (is(T == E[n], E, size_t n)) {
 		/+
 		Static arrays
@@ -881,15 +932,27 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		+/
 		foreach (i; 0 .. n) {
 			size_t offset = i * E.sizeof;
-			auto eblock = mixin(trusted!q{
-				UninitializedBlock(block.memory[offset .. offset + E.sizeof])
-			});
+
+			@trusted static
+			auto getEblock(ref UninitializedBlock block, size_t offset)
+			{
+				return UninitializedBlock(block.memory[offset .. offset + E.sizeof]);
+			}
+
+			auto eblock = getEblock(block, offset);
 			// Exclude recursive call from @trusted for correct inference
 			auto eptr = eblock.emplaceInitializer!E;
 			assert(eptr !is null);
 		}
 
-		return mixin(trusted!q{cast(T*) block.memory.ptr});
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static T* getValuePtr(ref UninitializedBlock block)
+		{
+			return cast(T*) block.memory.ptr;
+		}
+
+		return getValuePtr(block);
 	} else {
 		/+
 		Builtin types and enums
@@ -897,11 +960,15 @@ auto emplaceInitializer(T)(ref UninitializedBlock block)
 		No initSymbol, so we have to create our own.
 		+/
 		static immutable initSymbol = T.init;
-		return () @trusted {
+
+		@trusted static T* initBasic(ref UninitializedBlock block)
+		{
 			auto initializer = cast(const(void[])) (&initSymbol)[0 .. 1];
 			block.memory[0 .. size] = initializer[];
 			return cast(T*) block.memory.ptr;
-		}();
+		}
+
+		return initBasic(block);
 	}
 }
 

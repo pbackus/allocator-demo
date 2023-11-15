@@ -121,7 +121,14 @@ unittest
 	enum alignment = __traits(classInstanceAlignment, InSituRegion!128);
 	align(alignment) void[size] rawMem = void;
 
-	auto ublock = mixin(trusted!"UninitializedBlock(rawMem[])");
+	// Use static nested function for correct scope inference
+	// https://issues.dlang.org/show_bug.cgi?id=22977
+	@trusted static auto getUblock(ref void[size] rawMem)
+	{
+		return UninitializedBlock(rawMem[]);
+	}
+
+	auto ublock = getUblock(rawMem);
 	auto buf = emplace!(InSituRegion!128)(ublock);
 	assert(buf !is null);
 
