@@ -7,10 +7,11 @@ Authors: Paul Backus
 module pbackus.container.unique;
 
 import pbackus.allocator.block;
+import pbackus.lifetime;
 import pbackus.traits;
 import pbackus.util;
 
-import core.lifetime: move;
+import core.lifetime: move, forward;
 import std.traits: hasMember;
 
 /++
@@ -84,6 +85,7 @@ version (unittest) {
 	{
 		@safe pure nothrow @nogc:
 		void deallocate(ref Block!AllocatorStub) {}
+		Block!AllocatorStub allocate(size_t) { return typeof(return).init; }
 	}
 }
 
@@ -160,7 +162,23 @@ success, or an empty `Unique!(T, Allocator)` on failure.
 Unique!(T, Allocator)
 makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
 {
-	return typeof(return).init;
+	auto result = Unique!(T, Allocator)(allocator);
+	auto block = mixin(trusted!"result.allocator").allocate(storageSize!T);
+
+	if (!block.isNull) {
+		bool initialized = block.borrow!((void[] memory) {
+			auto ublock = mixin(trusted!q{UninitializedBlock(memory)});
+			auto ptr = ublock.emplace!T(forward!args);
+			return ptr !is null;
+		});
+
+		if (initialized)
+			() @trusted { result.storage = move(block); }();
+		else
+			mixin(trusted!"result.allocator").deallocate(block);
+	}
+
+	return result;
 }
 
 // Allocation failure
@@ -168,4 +186,13 @@ makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
 {
 	auto u = AllocatorStub().makeUnique!int(123);
 	assert(u.empty);
+}
+
+// Allocation success
+@safe unittest
+{
+	import pbackus.allocator.mallocator;
+
+	auto u = Mallocator().makeUnique!int(123);
+	assert(!u.empty);
 }
