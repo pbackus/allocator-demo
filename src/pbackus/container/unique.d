@@ -26,8 +26,8 @@ scope. To extend (or shorten) its lifetime, use `core.lifetime.move`.
 struct Unique(T, Allocator)
 {
 	/+
-	Safety invariant: a `Unique` is a safe value as long as one of the
-	following is true:
+	Safety invariant: a `Unique` is a safe value as long as both its `storage`
+	and its `allocator` are safe values, and one of the following is true:
 		1. Its `storage` is `null`.
 		2. Its `storage` was allocated by its `allocator` and contains an
 		   instance of `T` at offset 0.
