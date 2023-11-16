@@ -38,9 +38,6 @@ extern(C++) final class InSituRegion(size_t capacity)
 	/// Can only be default constructed
 	this() scope {}
 
-	/// Copying is disabled.
-	@disable this(ref inout InSituRegion) inout;
-
 	/++
 	Allocates at least `size` bytes.
 
