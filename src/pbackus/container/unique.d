@@ -36,7 +36,7 @@ struct Unique(T, Allocator)
 	private @system Block!Allocator storage;
 	private @system Allocator allocator;
 
-	/// Creates a `Unique` using a given allocator instance
+	/// Creates a `Unique` using a given allocator instance.
 	this(Allocator allocator)
 	{
 		this.allocator = allocator;
