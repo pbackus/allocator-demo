@@ -181,6 +181,9 @@ allocated memory. If deallocation fails, the memory will be leaked. To avoid
 this, construct a `T` value first, then pass it to `makeUnique` as the initial
 value.
 
+If `T`'s constructor escapes a reference to the constructed object,
+`makeUnique!T` will be `@system`.
+
 Params:
 	allocator = The allocator to use.
 	args = Initial value or constructor arguments.
@@ -285,4 +288,30 @@ version (D_BetterC) {} else
 		auto u = AllocCounter().makeUnique!ThrowsInCtor(123);
 	catch (Exception e)
 		assert(AllocCounter.count == 0);
+}
+
+// Escape in ctor is @system
+@safe unittest
+{
+	import pbackus.allocator.mallocator;
+
+	static extern(C++) class EscapeThis
+	{
+		extern(D) static int* p;
+
+		int n;
+		this() @safe
+		{
+			p = &this.n;
+		}
+	}
+
+	// Forbidden in @safe
+	assert(!__traits(compiles, Mallocator().makeUnique!EscapeThis));
+
+	// Ok in @system
+	@system void test()
+	{
+		auto u = Mallocator().makeUnique!EscapeThis;
+	}
 }
