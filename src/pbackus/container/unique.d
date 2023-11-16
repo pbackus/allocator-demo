@@ -42,6 +42,7 @@ struct Unique(T, Allocator)
 		this.allocator = allocator;
 	}
 
+	/// Copying is disabled.
 	@disable this(ref inout typeof(this)) inout;
 
 	/// Calls the value's destructor.
