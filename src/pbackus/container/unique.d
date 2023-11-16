@@ -108,6 +108,35 @@ struct Unique(T, Allocator)
 	{
 		return storage.isNull;
 	}
+
+	/++
+	Returns the stored value.
+
+	This method is `@system` if `T` is a reference type (`class` or
+	`interface`).
+
+	It is an error to call this method on an empty `Unique`.
+	+/
+	inout(T) value() inout
+	{
+		if (empty)
+			assert(0, "Can't get the value of an empty `" ~ typeof(this).stringof ~ "`");
+
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static inout(RefType!T) getValuePtr(ref inout Unique this_)
+		{
+			return cast(inout(RefType!T)) this_.storage.memory.ptr;
+		}
+
+		static if (is(T == class) || is(T == interface)) {
+			// Escaping a reference to the stored value is @system
+			forceInferSystem;
+			return getValuePtr(this);
+		} else {
+			return *getValuePtr(this);
+		}
+	}
 }
 
 version (unittest) {
@@ -255,6 +284,7 @@ makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
 
 	auto u = Mallocator().makeUnique!int(123);
 	assert(!u.empty);
+	assert(u.value == 123);
 }
 
 // Construction failure frees memory
