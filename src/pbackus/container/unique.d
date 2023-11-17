@@ -91,6 +91,8 @@ struct Unique(T, Allocator)
 
 			if (empty)
 				return Status.AllocFailed;
+		} else {
+			destroyValue;
 		}
 
 		bool initialized;
@@ -299,6 +301,27 @@ version (unittest) {
 		() @safe { u.destroyValue; }();
 		assert(Probe.destroyed == true);
 	}
+}
+
+// emplace - destroys existing value
+@system unittest
+{
+	static struct Probe
+	{
+		static bool destroyed;
+		~this() { destroyed = true; }
+	}
+
+	static Probe probe;
+
+	Unique!(Probe, AllocatorStub) u;
+	u.storage = Block!AllocatorStub(cast(void[]) (&probe)[0 .. 1]);
+
+	// Use lvalue to avoid destruction of temporaries
+	Probe newProbe;
+	Probe.destroyed = false;
+	cast(void) u.emplace(newProbe);
+	assert(Probe.destroyed == true);
 }
 
 // value
