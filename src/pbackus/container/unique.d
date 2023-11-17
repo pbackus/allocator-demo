@@ -7,6 +7,7 @@ Authors: Paul Backus
 module pbackus.container.unique;
 
 import pbackus.allocator.block;
+import pbackus.container.status;
 import pbackus.lifetime;
 import pbackus.traits;
 import pbackus.util;
@@ -44,6 +45,80 @@ struct Unique(T, Allocator)
 
 	/// Copying is disabled.
 	@disable this(ref inout typeof(this)) inout;
+
+	/++
+	Constructs a new value in this `Unique`'s storage.
+
+	Storage will be allocated if it does not already exist.
+
+	If allocation of new storage succeeds, but construction fails, an attempt
+	will be made to deallocate the new storage. If deallocation fails, the
+	memory will be leaked.
+
+	Params:
+		args = New value or arguments to construct it.
+
+	Returns: A [pbackus.container.status.Status|Status] indicating success or
+	failure.
+	+/
+	Status emplace(Args...)(auto ref Args args)
+	{
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		// Use setter in addition to ref getter for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=21286
+		@trusted static void setStorage(ref Unique this_, Block!Allocator block)
+		{
+			this_.storage = move(block);
+		}
+
+		@trusted static ref getStorage(ref Unique this_)
+		{
+			return this_.storage;
+		}
+
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		@trusted static ref getAllocator(ref Unique this_)
+		{
+			return this_.allocator;
+		}
+
+		bool wasEmpty = empty;
+
+		if (wasEmpty) {
+			setStorage(this, getAllocator(this).allocate(storageSize!T));
+
+			if (empty)
+				return Status.AllocFailed;
+		}
+
+		bool initialized;
+
+		scope(exit) {
+			if (wasEmpty && !initialized) {
+				// Best effort - try to deallocate, but leak on failure
+				getAllocator(this).deallocate(getStorage(this));
+				setStorage(this, Block!Allocator.init);
+			}
+		}
+
+		initialized = getStorage(this).borrow!((scope void[] memory) {
+			@trusted static auto toUblock(ref void[] memory)
+			{
+				return UninitializedBlock(memory);
+			}
+
+			auto ublock = toUblock(memory);
+			auto ptr = ublock.emplace!T(forward!args);
+			return ptr !is null;
+		});
+
+		if (!initialized)
+			return Status.EmplaceFailed;
+
+		return Status.Ok;
+	}
 
 	/// Calls the value's destructor.
 	void destroyValue()
@@ -265,49 +340,8 @@ success, or an empty `Unique!(T, Allocator)` on failure.
 Unique!(T, Allocator)
 makeUnique(T, Allocator, Args...)(Allocator allocator, auto ref Args args)
 {
-	// Use static nested function for correct scope inference
-	// https://issues.dlang.org/show_bug.cgi?id=22977
-	@trusted static ref getAllocator(ref Unique!(T, Allocator) result)
-	{
-		return result.allocator;
-	}
-
 	auto result = Unique!(T, Allocator)(allocator);
-	auto block = getAllocator(result).allocate(storageSize!T);
-
-	if (!block.isNull) {
-		bool initialized;
-
-		scope(exit) {
-			// Use static nested function for correct scope inference
-			// https://issues.dlang.org/show_bug.cgi?id=22977
-			@trusted static
-			void commitStorage(ref Unique!(T, Allocator) result, ref Block!Allocator block)
-			{
-				result.storage = move(block);
-			}
-
-			if (initialized)
-				commitStorage(result, block);
-			else
-				getAllocator(result).deallocate(block);
-		}
-
-		initialized = block.borrow!((scope void[] memory) {
-			// Use static nested function for correct scope inference
-			// https://issues.dlang.org/show_bug.cgi?id=22977
-			@trusted static auto toUblock(ref void[] memory)
-			{
-				return UninitializedBlock(memory);
-			}
-
-			auto ublock = toUblock(memory);
-			auto ptr = ublock.emplace!T(forward!args);
-			return ptr !is null;
-		});
-
-	}
-
+	cast(void) result.emplace(forward!args);
 	return result;
 }
 
