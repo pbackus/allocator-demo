@@ -137,6 +137,32 @@ struct Unique(T, Allocator)
 			return *getValuePtr(this);
 		}
 	}
+
+	static if (!(is(T == class) || is(T == interface))) {
+		/++
+		Sets the stored value.
+
+		This method cannot be used if `T` is a reference type (`class` or
+		`interface`). Instead, use `makeUnique` to create a new `Unique`.
+
+		It is an error to call this method on an empty `Unique'.
+		+/
+		void value(T value)
+		{
+			if (empty)
+				assert(0, "Can't set the value of an empty `" ~ typeof(this).stringof ~ "`");
+
+			@trusted static ref T getValueRef(ref Unique this_)
+			{
+				return *cast(T*) this_.storage.memory.ptr;
+			}
+
+			getValueRef(this) = forward!value;
+		}
+	} else {
+		/// ditto
+		@disable void value(T value);
+	}
 }
 
 version (unittest) {
@@ -198,6 +224,21 @@ version (unittest) {
 		() @safe { u.destroyValue; }();
 		assert(Probe.destroyed == true);
 	}
+}
+
+// value
+@system unittest
+{
+	static int n = 123;
+
+	Unique!(int, AllocatorStub) u;
+	u.storage = Block!AllocatorStub(cast(void[]) (&n)[0 .. 1]);
+
+	() @safe pure nothrow @nogc {
+		assert(u.value == 123);
+		u.value = 456;
+		assert(u.value == 456);
+	}();
 }
 
 /++
