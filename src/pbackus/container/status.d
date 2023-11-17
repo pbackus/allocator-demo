@@ -25,6 +25,9 @@ import core.attribute: mustuse;
 	/// Returned if allocation fails.
 	enum Status AllocFailed = Status(1);
 
+	/// Returned if initialization or construction fails.
+	enum EmplaceFailed = Status(2);
+
 	/// True if this `Status` is `Ok`.
 	@safe pure nothrow @nogc
 	bool isOk() const
@@ -60,6 +63,7 @@ import core.attribute: mustuse;
 		switch (code) {
 			case 0: return "Success";
 			case 1: return "Memory allocation failed";
+			case 2: return "Initialization or construction failed";
 			default: return "Unknown failure";
 		}
 	}
@@ -96,6 +100,7 @@ unittest
 {
 	assert(Status.Ok.isOk);
 	assert(!Status.AllocFailed.isOk);
+	assert(!Status.EmplaceFailed.isOk);
 }
 
 // assumeOk
