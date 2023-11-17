@@ -72,6 +72,8 @@ struct Unique(T, Allocator)
 			this_.storage = move(block);
 		}
 
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
 		@trusted static ref getStorage(ref Unique this_)
 		{
 			return this_.storage;
