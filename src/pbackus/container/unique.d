@@ -177,8 +177,19 @@ struct Unique(T, Allocator)
 			return this_.storage;
 		}
 
+		// Use static nested function for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=22977
+		// Use setter in addition to ref getter for correct scope inference
+		// https://issues.dlang.org/show_bug.cgi?id=21286
+		@trusted static void setStorage(ref Unique this_, Block!Allocator block)
+		{
+			this_.storage = move(block);
+		}
+
 		destroyValue;
+		// Best effort - try to deallocate, but leak on failure
 		getAllocator(this).deallocate(getStorage(this));
+		setStorage(this, Block!Allocator.init);
 	}
 
 	/// True if this `Unique` has no value.
