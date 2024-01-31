@@ -49,13 +49,6 @@ struct GCAllocator
 	{
 		return !block.isNull;
 	}
-
-	/// Sets `block` to null so the GC can free it automatically.
-	@safe pure nothrow @nogc
-	void deallocate(Block!GCAllocator block) const
-	{
-		// Nothing to do
-	}
 }
 
 // allocate
@@ -75,14 +68,4 @@ struct GCAllocator
 
 	assert(alloc.owns(b1));
 	assert(!alloc.owns(b2));
-}
-
-// deallocate
-@safe unittest
-{
-	import core.lifetime: move;
-
-	auto block = GCAllocator().allocate(32);
-	GCAllocator().deallocate(move(block));
-	assert(block.isNull);
 }
