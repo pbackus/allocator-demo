@@ -8,6 +8,8 @@ module pbackus.allocator.mallocator;
 
 import pbackus.allocator.block;
 
+import core.lifetime: move;
+
 /// The standard C heap allocator.
 struct Mallocator
 {
@@ -46,7 +48,7 @@ struct Mallocator
 
 	/// Deallocates `block` with `free`.
 	@trusted pure nothrow @nogc
-	void deallocate(ref Block!Mallocator block) const
+	void deallocate(Block!Mallocator block) const
 	{
 		import core.memory: pureFree;
 
@@ -54,7 +56,6 @@ struct Mallocator
 			return;
 
 		pureFree(block.memory.ptr);
-		block = Block!Mallocator.init;
 	}
 }
 
@@ -62,7 +63,7 @@ struct Mallocator
 @safe unittest
 {
 	auto block = Mallocator().allocate(32);
-	scope(exit) Mallocator().deallocate(block);
+	scope(exit) Mallocator().deallocate(move(block));
 	assert(!block.isNull);
 	assert(block.size >= 32);
 }
@@ -72,7 +73,7 @@ struct Mallocator
 {
 	auto alloc = Mallocator();
 	auto b1 = alloc.allocate(32);
-	scope(exit) alloc.deallocate(b1);
+	scope(exit) alloc.deallocate(move(b1));
 	Block!Mallocator b2;
 
 	assert(alloc.owns(b1));
@@ -83,6 +84,6 @@ struct Mallocator
 @safe unittest
 {
 	auto block = Mallocator().allocate(32);
-	Mallocator().deallocate(block);
+	Mallocator().deallocate(move(block));
 	assert(block.isNull);
 }

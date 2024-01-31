@@ -88,7 +88,7 @@ extern(C++) final class InSituRegion(size_t capacity)
 		block = The block to deallocate.
 	+/
 	@trusted pure nothrow @nogc
-	void deallocate(ref scope Block!InSituRegion block) scope
+	void deallocate(scope Block!InSituRegion block) scope
 	{
 		if (block.isNull)
 			return;
@@ -100,7 +100,6 @@ extern(C++) final class InSituRegion(size_t capacity)
 		if (blockOffset + block.size == inUse)
 		{
 			inUse -= block.size;
-			block = Block!InSituRegion.init;
 		}
 	}
 }
@@ -113,6 +112,8 @@ unittest
 {
 	import pbackus.lifetime;
 	import pbackus.util;
+
+	import core.lifetime: move;
 
 	enum size = __traits(classInstanceSize, InSituRegion!128);
 	enum alignment = __traits(classInstanceAlignment, InSituRegion!128);
@@ -134,7 +135,7 @@ unittest
 		assert(!block.isNull);
 		assert(block.size >= 32);
 		assert(buf.owns(block));
-		buf.deallocate(block);
+		buf.deallocate(move(block));
 		assert(block.isNull);
 	}();
 }
@@ -192,9 +193,11 @@ version (D_BetterC) {} else
 version (D_BetterC) {} else
 @safe unittest
 {
+	import core.lifetime: move;
+
 	scope buf = new InSituRegion!128;
 	auto block = buf.allocate(32);
-	buf.deallocate(block);
+	buf.deallocate(move(block));
 	assert(block.isNull);
 }
 
@@ -202,29 +205,13 @@ version (D_BetterC) {} else
 version (D_BetterC) {} else
 @safe unittest
 {
+	import core.lifetime: move;
+
 	scope buf = new InSituRegion!128;
 	auto block = buf.allocate(128);
-	buf.deallocate(block);
+	buf.deallocate(move(block));
 	block = buf.allocate(32);
 	assert(!block.isNull);
-}
-
-// Can only deallocate the most recently allocated block
-version (D_BetterC) {} else
-@safe unittest
-{
-	scope buf = new InSituRegion!128;
-	auto b1 = buf.allocate(32);
-	auto b2 = buf.allocate(32);
-	// should fail
-	buf.deallocate(b1);
-	assert(!b1.isNull);
-	// should succeed
-	buf.deallocate(b2);
-	assert(b2.isNull);
-	// should succeed
-	buf.deallocate(b1);
-	assert(b1.isNull);
 }
 
 /++

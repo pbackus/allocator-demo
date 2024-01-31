@@ -101,9 +101,7 @@ struct Unique(T, Allocator)
 
 		scope(exit) {
 			if (wasEmpty && !initialized) {
-				// Best effort - try to deallocate, but leak on failure
-				getAllocator(this).deallocate(getStorage(this));
-				setStorage(this, Block!Allocator.init);
+				getAllocator(this).deallocate(move(getStorage(this)));
 			}
 		}
 
@@ -187,9 +185,7 @@ struct Unique(T, Allocator)
 		}
 
 		destroyValue;
-		// Best effort - try to deallocate, but leak on failure
-		getAllocator(this).deallocate(getStorage(this));
-		setStorage(this, Block!Allocator.init);
+		getAllocator(this).deallocate(move(getStorage(this)));
 	}
 
 	/// True if this `Unique` has no value.
@@ -259,7 +255,7 @@ version (unittest) {
 	private struct AllocatorStub
 	{
 		@safe pure nothrow @nogc:
-		void deallocate(ref Block!AllocatorStub) {}
+		void deallocate(Block!AllocatorStub) {}
 		Block!AllocatorStub allocate(size_t) { return typeof(return).init; }
 	}
 }
@@ -419,7 +415,7 @@ version (D_BetterC) {} else
 		}
 
 		@safe nothrow
-		void deallocate(ref Block!AllocCounter block)
+		void deallocate(Block!AllocCounter block)
 		{
 			count--;
 			block = typeof(block).init;
