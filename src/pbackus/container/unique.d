@@ -418,7 +418,6 @@ version (D_BetterC) {} else
 		void deallocate(Block!AllocCounter block)
 		{
 			count--;
-			block = typeof(block).init;
 		}
 	}
 
